@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView
@@ -41,4 +42,29 @@ def generate_bid_pack(request, pk):
     messages.success(request, 'Bid pack DOCX and PDF generated.')
     return redirect('bid_generator:detail', pk=pk)
 
+
+def download_bid_pack_file(request, pk, file_type):
+    bid_pack = get_object_or_404(BidPack, pk=pk)
+    if file_type == 'docx':
+        generated_file = bid_pack.generated_docx
+        content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    elif file_type == 'pdf':
+        generated_file = bid_pack.generated_pdf
+        content_type = 'application/pdf'
+    else:
+        raise Http404('Unsupported bid pack file type.')
+
+    if not generated_file:
+        raise Http404('Bid pack file has not been generated yet.')
+
+    try:
+        return FileResponse(
+            generated_file.open('rb'),
+            as_attachment=True,
+            filename=generated_file.name.rsplit('/', 1)[-1],
+            content_type=content_type,
+        )
+    except FileNotFoundError as exc:
+        raise Http404('Bid pack file was not found on the server. Please regenerate it.') from exc
+ 
 # Create your views here.

@@ -9,4 +9,5 @@ urlpatterns = [
     path('new/', views.BidPackCreateView.as_view(), name='create'),
     path('<int:pk>/', views.BidPackDetailView.as_view(), name='detail'),
     path('<int:pk>/generate/', views.generate_bid_pack, name='generate'),
+    path('<int:pk>/download/<str:file_type>/', views.download_bid_pack_file, name='download'),
 ]
