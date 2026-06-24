@@ -3,7 +3,7 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
 from reportlab.lib import colors
-from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import PageBreak, Paragraph, Spacer, Table, TableStyle
 
 from core.models import SystemSettings
 from core.pdf import add_signature, build_pdf_response, letterhead_elements, styles
@@ -21,6 +21,44 @@ def build_bid_checklist(bid_pack):
     ]
     checklist.extend(requirement.description for requirement in requirements if requirement.is_mandatory)
     return checklist
+
+
+def requirements_matrix_rows(bid_pack):
+    rows = []
+    for requirement in bid_pack.tender.requirements.all():
+        rows.append((
+            requirement.get_requirement_type_display(),
+            requirement.description,
+            'Yes' if requirement.is_mandatory else 'No',
+            'To confirm / attach',
+        ))
+    if not rows:
+        rows.append((
+            'General',
+            'No solicitation requirements have been extracted yet. Upload/analyse the solicitation document before final submission.',
+            'Yes',
+            'Pending analysis',
+        ))
+    return rows
+
+
+def table_of_contents():
+    return [
+        'Tender Summary',
+        'Solicitation Requirements Matrix',
+        'Cover Letter',
+        'Form of Bid / Tender Submission Letter',
+        'Bid Checklist',
+        'Company Profile Summary',
+        'Price Schedule',
+        'Company Document Checklist',
+        'Similar Experience Table',
+        'Litigation Declaration',
+        'Power of Attorney',
+        'Delivery Period Confirmation',
+        'Warranty / Undertaking Letter',
+        'Signature Section',
+    ]
 
 
 def company_document_checklist(company):
@@ -59,29 +97,40 @@ def generate_bid_pack_pdf(bid_pack):
     style = styles()
     settings = SystemSettings.load()
     currency = settings.default_currency or 'ZMW'
-    elements = letterhead_elements(bid_pack.company, 'Bid Pack')
-    elements.append(Paragraph(f'<b>Tender:</b> {bid_pack.tender.title}', style['BodyText']))
-    elements.append(Paragraph(f'<b>Procuring Entity:</b> {bid_pack.tender.procuring_entity}', style['BodyText']))
-    elements.append(Paragraph(f'<b>Closing:</b> {bid_pack.tender.closing_at or bid_pack.tender.closing_date or "-"}', style['BodyText']))
-    elements.append(Spacer(1, 12))
+    elements = []
+    add_pdf_cover_page(elements, bid_pack)
+    elements.append(PageBreak())
+    add_pdf_table_of_contents(elements)
+    elements.append(PageBreak())
 
     sections = build_bid_sections(bid_pack)
-    for title, lines in sections:
-        elements.append(Paragraph(title, style['SectionTitle']))
+    for number, (title, lines) in enumerate(sections, start=1):
+        elements.append(Paragraph(f'{number}. {title}', style['SectionTitle']))
         for line in lines:
             elements.append(Paragraph(str(line), style['BodyText']))
         elements.append(Spacer(1, 6))
 
-    if bid_pack.quotation:
-        elements.append(Paragraph('Price Schedule', style['SectionTitle']))
-        rows = [['Description', 'Qty', 'Unit', 'Total']]
-        for description, qty, unit, total in price_schedule_rows(bid_pack):
-            rows.append([Paragraph(description, style['BodyText']), str(qty), f'{currency} {unit:,.2f}', f'{currency} {total:,.2f}'])
-        rows.append(['', '', 'Grand total', f'{currency} {bid_pack.quotation.total:,.2f}'])
-        elements.append(Table(rows, colWidths=[230, 55, 95, 95], style=table_style()))
+        if title == 'Solicitation Requirements Matrix':
+            rows = [['Type', 'Requirement', 'Mandatory', 'Action']]
+            rows.extend([
+                [kind, Paragraph(description, style['BodyText']), mandatory, action]
+                for kind, description, mandatory, action in requirements_matrix_rows(bid_pack)
+            ])
+            elements.append(Table(rows, colWidths=[95, 215, 65, 100], style=table_style()))
+            elements.append(Spacer(1, 6))
 
-    elements.append(Paragraph('Company Document Checklist', style['SectionTitle']))
-    elements.append(Table([['Document', 'Status'], *company_document_checklist(bid_pack.company)], colWidths=[260, 160], style=table_style()))
+        if title == 'Price Schedule' and bid_pack.quotation:
+            rows = [['Description', 'Qty', 'Unit', 'Total']]
+            for description, qty, unit, total in price_schedule_rows(bid_pack):
+                rows.append([Paragraph(description, style['BodyText']), str(qty), f'{currency} {unit:,.2f}', f'{currency} {total:,.2f}'])
+            rows.append(['', '', 'Grand total', f'{currency} {bid_pack.quotation.total:,.2f}'])
+            elements.append(Table(rows, colWidths=[230, 55, 95, 95], style=table_style()))
+            elements.append(Spacer(1, 6))
+
+        if title == 'Company Document Checklist':
+            elements.append(Table([['Document', 'Status'], *company_document_checklist(bid_pack.company)], colWidths=[260, 160], style=table_style()))
+            elements.append(Spacer(1, 6))
+
     add_signature(elements, label='Authorised signatory')
     return build_pdf_response(elements, f'Bid Pack - {bid_pack.tender.title}')
 
@@ -92,41 +141,49 @@ def generate_bid_pack_docx(bid_pack):
     settings = SystemSettings.load()
     currency = settings.default_currency or 'ZMW'
     document = Document()
-    document.add_heading(bid_pack.company.name, 0)
-    document.add_paragraph(f'TPIN: {bid_pack.company.tpin or "-"}')
-    document.add_paragraph(f'Address: {bid_pack.company.address or "-"}')
-    document.add_paragraph(f'Email: {bid_pack.company.email or "-"} | Phone: {bid_pack.company.phone or "-"}')
-    document.add_heading('Bid Pack', level=1)
-    document.add_paragraph(f'Tender: {bid_pack.tender.title}')
-    document.add_paragraph(f'Procuring Entity: {bid_pack.tender.procuring_entity}')
-    document.add_paragraph(f'Tender Unique ID: {bid_pack.tender.tender_number or "-"}')
+    add_docx_cover_page(document, bid_pack)
+    document.add_page_break()
+    add_docx_table_of_contents(document)
+    document.add_page_break()
 
-    for title, lines in build_bid_sections(bid_pack):
-        document.add_heading(title, level=2)
+    for number, (title, lines) in enumerate(build_bid_sections(bid_pack), start=1):
+        document.add_heading(f'{number}. {title}', level=1)
         for line in lines:
             document.add_paragraph(str(line), style='List Bullet' if title.endswith('Checklist') else None)
 
-    document.add_heading('Price Schedule', level=2)
-    table = document.add_table(rows=1, cols=4)
-    table.style = 'Table Grid'
-    for idx, heading in enumerate(['Description', 'Qty', 'Unit', 'Total']):
-        table.rows[0].cells[idx].text = heading
-    for description, qty, unit, total in price_schedule_rows(bid_pack):
-        cells = table.add_row().cells
-        cells[0].text = str(description)
-        cells[1].text = str(qty)
-        cells[2].text = f'{currency} {unit:,.2f}'
-        cells[3].text = f'{currency} {total:,.2f}'
+        if title == 'Solicitation Requirements Matrix':
+            table = document.add_table(rows=1, cols=4)
+            table.style = 'Table Grid'
+            for idx, heading in enumerate(['Type', 'Requirement', 'Mandatory', 'Action']):
+                table.rows[0].cells[idx].text = heading
+            for kind, description, mandatory, action in requirements_matrix_rows(bid_pack):
+                cells = table.add_row().cells
+                cells[0].text = kind
+                cells[1].text = description
+                cells[2].text = mandatory
+                cells[3].text = action
 
-    document.add_heading('Company Document Checklist', level=2)
-    checklist_table = document.add_table(rows=1, cols=2)
-    checklist_table.style = 'Table Grid'
-    checklist_table.rows[0].cells[0].text = 'Document'
-    checklist_table.rows[0].cells[1].text = 'Status'
-    for name, status in company_document_checklist(bid_pack.company):
-        cells = checklist_table.add_row().cells
-        cells[0].text = name
-        cells[1].text = status
+        if title == 'Price Schedule' and bid_pack.quotation:
+            table = document.add_table(rows=1, cols=4)
+            table.style = 'Table Grid'
+            for idx, heading in enumerate(['Description', 'Qty', 'Unit', 'Total']):
+                table.rows[0].cells[idx].text = heading
+            for description, qty, unit, total in price_schedule_rows(bid_pack):
+                cells = table.add_row().cells
+                cells[0].text = str(description)
+                cells[1].text = str(qty)
+                cells[2].text = f'{currency} {unit:,.2f}'
+                cells[3].text = f'{currency} {total:,.2f}'
+
+        if title == 'Company Document Checklist':
+            checklist_table = document.add_table(rows=1, cols=2)
+            checklist_table.style = 'Table Grid'
+            checklist_table.rows[0].cells[0].text = 'Document'
+            checklist_table.rows[0].cells[1].text = 'Status'
+            for name, status in company_document_checklist(bid_pack.company):
+                cells = checklist_table.add_row().cells
+                cells[0].text = name
+                cells[1].text = status
 
     document.add_paragraph('\nAuthorised signatory: ________________________')
     document.add_paragraph(f'Prepared by: {settings.default_prepared_by_name or "________________________"}')
@@ -135,10 +192,73 @@ def generate_bid_pack_docx(bid_pack):
     return buffer.getvalue()
 
 
+def add_pdf_cover_page(elements, bid_pack):
+    style = styles()
+    company = bid_pack.company
+    tender = bid_pack.tender
+    elements.extend(letterhead_elements(company, 'Bid Submission Pack'))
+    elements.append(Spacer(1, 30))
+    elements.append(Paragraph(f'<b>Tender:</b> {tender.title}', style['Heading2']))
+    elements.append(Paragraph(f'<b>Procuring Entity:</b> {tender.procuring_entity}', style['BodyText']))
+    elements.append(Paragraph(f'<b>Tender Unique ID:</b> {tender.tender_number or "-"}', style['BodyText']))
+    elements.append(Paragraph(f'<b>ZPPA Resource ID:</b> {tender.zppa_resource_id or "-"}', style['BodyText']))
+    elements.append(Paragraph(f'<b>Closing Date:</b> {tender.closing_at or tender.closing_date or "-"}', style['BodyText']))
+    elements.append(Spacer(1, 26))
+    elements.append(Paragraph(f'<b>Submitted by:</b> {company.name}', style['BodyText']))
+    elements.append(Paragraph(f'<b>TPIN:</b> {company.tpin or "-"}', style['BodyText']))
+    elements.append(Paragraph(f'<b>Address:</b> {company.address or "-"}', style['BodyText']))
+    elements.append(Paragraph(f'<b>Email / Phone:</b> {company.email or "-"} / {company.phone or "-"}', style['BodyText']))
+
+
+def add_pdf_table_of_contents(elements):
+    style = styles()
+    elements.append(Paragraph('Table of Contents', style['Heading1']))
+    rows = [['No.', 'Section']]
+    rows.extend([[str(index), title] for index, title in enumerate(table_of_contents(), start=1)])
+    elements.append(Table(rows, colWidths=[45, 390], style=table_style()))
+
+
+def add_docx_cover_page(document, bid_pack):
+    company = bid_pack.company
+    tender = bid_pack.tender
+    document.add_heading('Bid Submission Pack', 0)
+    document.add_paragraph(f'Tender: {tender.title}')
+    document.add_paragraph(f'Procuring Entity: {tender.procuring_entity}')
+    document.add_paragraph(f'Tender Unique ID: {tender.tender_number or "-"}')
+    document.add_paragraph(f'ZPPA Resource ID: {tender.zppa_resource_id or "-"}')
+    document.add_paragraph(f'Closing Date: {tender.closing_at or tender.closing_date or "-"}')
+    document.add_paragraph('')
+    document.add_heading('Submitted by', level=1)
+    document.add_paragraph(company.name)
+    document.add_paragraph(f'TPIN: {company.tpin or "-"}')
+    document.add_paragraph(f'Address: {company.address or "-"}')
+    document.add_paragraph(f'Email: {company.email or "-"}')
+    document.add_paragraph(f'Phone: {company.phone or "-"}')
+
+
+def add_docx_table_of_contents(document):
+    document.add_heading('Table of Contents', level=1)
+    for index, title in enumerate(table_of_contents(), start=1):
+        document.add_paragraph(f'{index}. {title}')
+
+
 def build_bid_sections(bid_pack):
     tender = bid_pack.tender
     company = bid_pack.company
     return [
+        ('Tender Summary', [
+            f'Tender title: {tender.title}',
+            f'Procuring entity: {tender.procuring_entity}',
+            f'Tender number / unique ID: {tender.tender_number or "-"}',
+            f'Procurement method: {tender.procurement_method or "-"}',
+            f'Submission method: {tender.submission_method or "-"}',
+            f'Bid security: {tender.bid_security_amount or "To confirm from solicitation document"}',
+            f'Participation fee: {tender.participation_fee or "-"}',
+            f'Closing date: {tender.closing_at or tender.closing_date or "-"}',
+        ]),
+        ('Solicitation Requirements Matrix', [
+            'The requirements below are generated from the tender requirements captured for this solicitation document.',
+        ]),
         ('Cover Letter', [
             f'We submit our bid for {tender.title}.',
             f'{company.name} confirms interest and availability to perform the required works/services/supplies.',
@@ -152,6 +272,14 @@ def build_bid_sections(bid_pack):
             company.profile_summary or f'{company.name} is a registered supplier/contractor.',
             f'TPIN: {company.tpin or "-"}',
             f'PACRA Registration: {company.registration_number or "-"}',
+        ]),
+        ('Price Schedule', [
+            'Attach the priced quotation or bill of quantities for this bid.'
+            if not bid_pack.quotation
+            else 'The attached price schedule is generated from the linked quotation.',
+        ]),
+        ('Company Document Checklist', [
+            'Confirm that each mandatory company document is attached and valid at submission date.',
         ]),
         ('Similar Experience Table', [
             'Past contract | Client | Year | Value | Contact person',
