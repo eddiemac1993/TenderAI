@@ -10,6 +10,7 @@ urlpatterns = [
     path('requirements/', views.RequirementListView.as_view(), name='requirements'),
     path('requirements/new/', views.RequirementCreateView.as_view(), name='requirement_create'),
     path('zppa/import/', views.ZppaManualImportView.as_view(), name='zppa_import'),
+    path('zppa/import-json/', views.ZppaJsonImportView.as_view(), name='zppa_import_json'),
     path('zppa/scrape-today/', views.scrape_zppa_today, name='zppa_scrape_today'),
     path('zppa/scrape-logs/', views.ZppaScrapeLogListView.as_view(), name='zppa_scrape_logs'),
     path('<int:pk>/', views.TenderDetailView.as_view(), name='detail'),

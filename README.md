@@ -97,12 +97,26 @@ SQLite file path will be `/home/YOUR_USERNAME/TenderAI/db.sqlite3`. Back it up r
 
 Note: PythonAnywhere free accounts restrict outbound internet access. If the public ZPPA domains are not allowed from the account, the in-app scraper will log a failed scrape instead of crashing. Manual ZPPA import and CSV import will still work. A paid PythonAnywhere account or another host may be needed for live public scraping.
 
+Workaround for PythonAnywhere free accounts:
+
+1. Run this locally where ZPPA is reachable:
+
+```bash
+python manage.py export_zppa_public_tenders zppa_today.json --today --limit 10
+```
+
+2. Open the hosted app and go to **Tenders > Import ZPPA JSON**.
+3. Upload `zppa_today.json`.
+
+This keeps the hosted app useful even when PythonAnywhere blocks outbound scraping.
+
 ## ZPPA import
 
 Use the public scrape button at `/tenders/`, the manual import page at `/tenders/zppa/import/`, or import a CSV of public tender data:
 
 ```bash
 python manage.py scrape_zppa_public_tenders --today --limit 10
+python manage.py export_zppa_public_tenders zppa_today.json --today --limit 10
 ```
 
 ```bash

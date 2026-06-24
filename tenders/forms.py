@@ -53,3 +53,11 @@ class ZppaManualImportForm(forms.Form):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'form-control')
+
+
+class ZppaJsonImportForm(forms.Form):
+    file = forms.FileField(help_text='Upload a JSON file exported by export_zppa_public_tenders.')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['file'].widget.attrs.setdefault('class', 'form-control')

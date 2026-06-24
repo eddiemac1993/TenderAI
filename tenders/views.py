@@ -1,7 +1,10 @@
+import json
+
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils.dateparse import parse_datetime
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
 from ai_engine.forms import SolicitationDocumentForm
@@ -11,7 +14,7 @@ from ai_engine.services import process_solicitation_document
 from companies.models import BusinessCategory, Company
 from documents.models import CompanyDocument
 
-from .forms import TenderForm, TenderRequirementForm, ZppaManualImportForm
+from .forms import TenderForm, TenderRequirementForm, ZppaJsonImportForm, ZppaManualImportForm
 from .models import Tender, TenderMatch, TenderRequirement, ZppaScrapeLog
 from .services import calculate_tender_matches
 from .zppa_scraper import import_public_zppa_tenders
@@ -100,6 +103,23 @@ class ZppaManualImportView(FormView):
         return redirect(tender)
 
 
+class ZppaJsonImportView(FormView):
+    template_name = 'tenders/zppa_json_import.html'
+    form_class = ZppaJsonImportForm
+    success_url = reverse_lazy('tenders:list')
+
+    def form_valid(self, form):
+        payload = json.load(form.cleaned_data['file'])
+        created_count = 0
+        updated_count = 0
+        for item in payload:
+            tender, created = upsert_zppa_import_item(item)
+            created_count += int(created)
+            updated_count += int(not created)
+        messages.success(self.request, f'Imported ZPPA JSON: {created_count} created, {updated_count} updated.')
+        return super().form_valid(form)
+
+
 class TenderMatchView(TemplateView):
     template_name = 'tenders/matching.html'
 
@@ -109,6 +129,38 @@ class TenderMatchView(TemplateView):
         context['tender'] = tender
         context['matches'] = calculate_tender_matches(tender)
         return context
+
+
+def upsert_zppa_import_item(item):
+    lookup = {}
+    if item.get('resource_id'):
+        lookup['zppa_resource_id'] = item['resource_id']
+    elif item.get('tender_number'):
+        lookup['tender_number'] = item['tender_number']
+    else:
+        lookup = {'title': item['title'], 'imported_reference': item.get('url', '')}
+    closing_at = parse_datetime(item.get('closing_at') or '')
+    published_at = parse_datetime(item.get('published_at') or '')
+    tender, created = Tender.objects.update_or_create(
+        **lookup,
+        defaults={
+            'title': item.get('title', ''),
+            'tender_number': item.get('tender_number', ''),
+            'zppa_resource_id': item.get('resource_id', ''),
+            'procuring_entity': item.get('procuring_entity') or 'ZPPA e-GP public listing',
+            'description': item.get('description', ''),
+            'source': Tender.Source.ZPPA,
+            'closing_date': closing_at.date() if closing_at else None,
+            'published_at': published_at,
+            'closing_at': closing_at,
+            'submission_method': item.get('submission_method', ''),
+            'procurement_method': item.get('procurement_method', ''),
+            'zppa_details': item.get('detail_rows') or [],
+            'imported_reference': item.get('url', ''),
+            'notes': f'Imported from ZPPA JSON export. Listed date: {item.get("listed_date") or "unknown"}.',
+        },
+    )
+    return tender, created
 
 
 def analyze_tender_placeholder(request, pk):
