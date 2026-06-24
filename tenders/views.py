@@ -120,7 +120,15 @@ def analyze_tender_placeholder(request, pk):
 
 
 def scrape_zppa_today(request):
-    imported = import_public_zppa_tenders(today_only=True, limit=10, write_log=True)
+    try:
+        imported = import_public_zppa_tenders(today_only=True, limit=10, write_log=True)
+    except Exception as exc:
+        messages.error(
+            request,
+            'ZPPA scrape could not run from this server. PythonAnywhere free accounts may block outbound access to some public sites. '
+            f'The failure was logged: {exc}',
+        )
+        return HttpResponseRedirect(reverse('tenders:zppa_scrape_logs'))
     created_count = sum(1 for _, created in imported if created)
     updated_count = len(imported) - created_count
     messages.success(

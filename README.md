@@ -95,6 +95,8 @@ python manage.py createsuperuser
 
 SQLite file path will be `/home/YOUR_USERNAME/TenderAI/db.sqlite3`. Back it up regularly because it will contain your TenderAI data.
 
+Note: PythonAnywhere free accounts restrict outbound internet access. If the public ZPPA domains are not allowed from the account, the in-app scraper will log a failed scrape instead of crashing. Manual ZPPA import and CSV import will still work. A paid PythonAnywhere account or another host may be needed for live public scraping.
+
 ## ZPPA import
 
 Use the public scrape button at `/tenders/`, the manual import page at `/tenders/zppa/import/`, or import a CSV of public tender data:
