@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - TenderAI{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Procurement dashboard</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-success" href="{% url 'tenders:zppa_scrape_today' %}">Scrape today</a>
+    <a class="btn btn-primary" href="{% url 'tenders:zppa_import' %}">Manual ZPPA import</a>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Companies</div><div class="fs-3">{{ company_count }}</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Total tenders</div><div class="fs-3">{{ total_tenders }}</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Closing in 7 days</div><div class="fs-3">{{ closing_7_days|length }}</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Expired docs</div><div class="fs-3">{{ expired_documents|length }}</div></div></div></div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Missing bid security check</div><div class="fs-3">{{ bid_security_tenders|length }}</div></div></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Require site visit</div><div class="fs-3">{{ site_visit_tenders|length }}</div></div></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Incomplete company profiles</div><div class="fs-3">{{ incomplete_companies|length }}</div></div></div></div>
+</div>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <h2 class="h5">Tenders closing soon</h2>
+    <div class="list-group">
+      {% for tender in closing_soon %}<a class="list-group-item list-group-item-action" href="{{ tender.get_absolute_url }}">{{ tender.title }} <span class="text-muted">({{ tender.closing_date }})</span></a>{% empty %}<div class="list-group-item text-muted">No tenders closing in the next 14 days.</div>{% endfor %}
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <h2 class="h5">Best matched tenders</h2>
+    <div class="list-group">
+      {% for match in best_matches %}<a class="list-group-item list-group-item-action" href="{% url 'tenders:match' match.tender_id %}">{{ match.tender }} - {{ match.company }} <span class="badge text-bg-success">{{ match.score }}%</span></a>{% empty %}<div class="list-group-item text-muted">Run matching from a tender page to populate this list.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+<div class="row g-4 mt-1">
+  <div class="col-lg-4">
+    <h2 class="h5">Bid security needed</h2>
+    <div class="list-group">{% for tender in bid_security_tenders %}<a class="list-group-item list-group-item-action" href="{{ tender.get_absolute_url }}">{{ tender.title }}</a>{% empty %}<div class="list-group-item text-muted">No bid security signals found.</div>{% endfor %}</div>
+  </div>
+  <div class="col-lg-4">
+    <h2 class="h5">Site visits</h2>
+    <div class="list-group">{% for tender in site_visit_tenders %}<a class="list-group-item list-group-item-action" href="{{ tender.get_absolute_url }}">{{ tender.title }}</a>{% empty %}<div class="list-group-item text-muted">No site visit signals found.</div>{% endfor %}</div>
+  </div>
+  <div class="col-lg-4">
+    <h2 class="h5">Incomplete profiles</h2>
+    <div class="list-group">{% for company in incomplete_companies %}<a class="list-group-item list-group-item-action" href="{{ company.get_absolute_url }}">{{ company.name }}</a>{% empty %}<div class="list-group-item text-muted">Company profiles look complete.</div>{% endfor %}</div>
+  </div>
+</div>
+{% endblock %}

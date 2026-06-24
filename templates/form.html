@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow mb-1">TenderAI</p>
+    <h1 class="h3 mb-0">{% if object.pk %}Edit record{% else %}Create record{% endif %}</h1>
+  </div>
+</div>
+<form method="post" enctype="multipart/form-data" class="app-card app-form">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-outline-secondary" href="{{ request.META.HTTP_REFERER|default:'/' }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">{{ object.title }}</h1><a class="btn btn-outline-primary" href="{% url 'documents:update' object.pk %}">Edit</a></div>
+<div class="card card-body">
+  <p><strong>Company:</strong> {{ object.company }}</p><p><strong>Type:</strong> {{ object.get_document_type_display }}</p><p><strong>Issue:</strong> {{ object.issue_date|default:"-" }} <strong>Expiry:</strong> {{ object.expiry_date|default:"-" }}</p>
+  {% if object.file %}<p><a class="btn btn-primary" href="{{ object.file.url }}">Download file</a></p>{% endif %}
+  <p>{{ object.notes|linebreaksbr }}</p>
+</div>
+{% endblock %}

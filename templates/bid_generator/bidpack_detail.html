@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h3 mb-3">Bid pack</h1>
+<div class="card card-body">
+  <p><strong>Tender:</strong> {{ object.tender }}</p><p><strong>Company:</strong> {{ object.company }}</p><p><strong>Quotation:</strong> {{ object.quotation|default:"-" }}</p>
+  <p><a class="btn btn-primary" href="{% url 'bid_generator:generate' object.pk %}">Generate DOCX/PDF</a>
+  {% if object.generated_docx %}<a class="btn btn-outline-primary" href="{{ object.generated_docx.url }}">Download DOCX</a>{% endif %}
+  {% if object.generated_pdf %}<a class="btn btn-outline-primary" href="{{ object.generated_pdf.url }}">Download PDF</a>{% endif %}</p>
+  <h2 class="h5">Bid checklist</h2>
+  <ul>{% for item in checklist %}<li>{{ item }}</li>{% endfor %}</ul>
+  <p class="text-muted">DOCX and PDF generation hooks are ready for python-docx and ReportLab/WeasyPrint integration.</p>
+</div>
+{% endblock %}

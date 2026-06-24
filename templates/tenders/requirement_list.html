@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">Tender requirements</h1><a class="btn btn-primary" href="{% url 'tenders:requirement_create' %}">Add requirement</a></div>
+<div class="list-group">{% for req in requirements %}<div class="list-group-item"><strong>{{ req.tender }}</strong> - {{ req.get_requirement_type_display }}<br>{{ req.description }}</div>{% empty %}<div class="list-group-item text-muted">No requirements.</div>{% endfor %}</div>
+{% endblock %}

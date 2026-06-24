@@ -1,0 +1,5 @@
+<div class="card card-body mb-3">
+  <p><strong>Company:</strong> {{ doc.company }}</p><p><strong>Customer:</strong> {{ doc.customer_name }} {{ doc.customer_tpin }}</p><p><strong>Date:</strong> {{ doc.date }}</p>
+  <table class="table"><tr><th>Description</th><th class="text-end">Qty</th><th class="text-end">Unit</th><th class="text-end">Total</th></tr>{% for item in doc.items.all %}<tr><td>{{ item.description }}</td><td class="text-end">{{ item.quantity }}</td><td class="text-end">{{ item.unit_price }}</td><td class="text-end">{{ item.line_total }}</td></tr>{% empty %}<tr><td colspan="4" class="text-muted">No line items.</td></tr>{% endfor %}<tr><th colspan="3" class="text-end">Subtotal</th><td class="text-end">{{ doc.subtotal }}</td></tr><tr><th colspan="3" class="text-end">Tax</th><td class="text-end">{{ doc.tax_amount }}</td></tr><tr><th colspan="3" class="text-end">Total</th><td class="text-end fw-bold">{{ doc.total }}</td></tr></table>
+  <a class="btn btn-sm btn-outline-primary" href="{% url item_create_url %}">Add line item</a>
+</div>

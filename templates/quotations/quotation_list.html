@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">Quotations</h1><a class="btn btn-primary" href="{% url 'quotations:quotation_create' %}">Create quotation</a></div>
+<div class="list-group">{% for quotation in quotations %}<a class="list-group-item list-group-item-action" href="{{ quotation.get_absolute_url }}">{{ quotation.number }} - {{ quotation.customer_name }} <span class="text-muted">{{ quotation.date }}</span></a>{% empty %}<div class="list-group-item text-muted">No quotations.</div>{% endfor %}</div>
+{% endblock %}

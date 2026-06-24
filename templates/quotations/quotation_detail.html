@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">Quotation {{ object.number }}</h1><div class="d-flex gap-2"><a class="btn btn-outline-primary" href="{% url 'quotations:quotation_update' object.pk %}">Edit</a><a class="btn btn-outline-secondary" href="{% url 'quotations:quotation_pdf' object.pk %}">PDF placeholder</a></div></div>
+{% include "quotations/partials/commercial_detail.html" with doc=object item_create_url='quotations:quotation_item_create' %}
+{% endblock %}

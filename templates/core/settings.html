@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow mb-1">Configuration</p>
+    <h1 class="h3 mb-0">System settings</h1>
+  </div>
+</div>
+<form method="post" enctype="multipart/form-data" class="app-card app-form">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Save settings</button>
+  </div>
+</form>
+{% endblock %}

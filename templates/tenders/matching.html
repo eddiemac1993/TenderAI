@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h3 mb-3">Company matching: {{ tender.title }}</h1>
+<div class="table-responsive"><table class="table table-striped"><tr><th>Company</th><th>Score</th><th>Missing</th><th>Expired</th><th>Recommended action</th></tr>{% for match in matches %}<tr><td>{{ match.company }}</td><td><span class="badge text-bg-success">{{ match.score }}%</span></td><td>{{ match.missing_documents|default:"-" }}</td><td>{{ match.expired_documents|default:"-" }}</td><td>{{ match.recommended_action }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted">No companies available to match.</td></tr>{% endfor %}</table></div>
+{% endblock %}

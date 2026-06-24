@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">{{ object.name }}</h1><a class="btn btn-outline-primary" href="{% url 'companies:update' object.pk %}">Edit</a></div>
+<div class="row g-4">
+  <div class="col-lg-7"><div class="card"><div class="card-body"><p><strong>TPIN:</strong> {{ object.tpin|default:"-" }}</p><p><strong>Registration:</strong> {{ object.registration_number|default:"-" }}</p><p><strong>Contact:</strong> {{ object.phone }} {{ object.email }}</p><p>{{ object.profile_summary|linebreaksbr }}</p></div></div></div>
+  <div class="col-lg-5"><h2 class="h5">Documents</h2><div class="list-group">{% for doc in object.documents.all %}<a class="list-group-item" href="{{ doc.get_absolute_url }}">{{ doc.get_document_type_display }} - {{ doc.expiry_date|default:"No expiry" }}</a>{% empty %}<div class="list-group-item text-muted">No documents uploaded.</div>{% endfor %}</div></div>
+</div>
+{% endblock %}

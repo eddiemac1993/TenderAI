@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h3">Delete record</h1>
+<form method="post" class="card card-body">
+  {% csrf_token %}
+  <p>Are you sure you want to delete <strong>{{ object }}</strong>?</p>
+  <div class="d-flex gap-2">
+    <button class="btn btn-danger" type="submit">Delete</button>
+    <a class="btn btn-outline-secondary" href="{{ object.get_absolute_url|default:'/' }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

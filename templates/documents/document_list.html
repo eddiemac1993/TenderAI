@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">Company documents</h1><a class="btn btn-primary" href="{% url 'documents:create' %}">Upload document</a></div>
+<div class="table-responsive"><table class="table table-striped"><tr><th>Company</th><th>Type</th><th>Title</th><th>Expiry</th><th></th></tr>{% for doc in documents %}<tr><td>{{ doc.company }}</td><td>{{ doc.get_document_type_display }}</td><td>{{ doc.title }}</td><td>{% if doc.is_expired %}<span class="text-danger">{{ doc.expiry_date }}</span>{% else %}{{ doc.expiry_date|default:"-" }}{% endif %}</td><td><a href="{{ doc.get_absolute_url }}">View</a></td></tr>{% empty %}<tr><td colspan="5" class="text-muted">No documents.</td></tr>{% endfor %}</table></div>
+{% endblock %}

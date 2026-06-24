@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">{{ object.title }}</h1><div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{% url 'tenders:analyze_placeholder' object.pk %}">Run placeholder AI</a><a class="btn btn-outline-success" href="{% url 'tenders:match' object.pk %}">Match companies</a><a class="btn btn-outline-primary" href="{% url 'tenders:update' object.pk %}">Edit</a></div></div>
+<div class="row g-4">
+  <div class="col-lg-6"><div class="card card-body"><p><strong>Number:</strong> {{ object.tender_number|default:"-" }}</p><p><strong>ZPPA Resource ID:</strong> {{ object.zppa_resource_id|default:"-" }}</p><p><strong>Entity:</strong> {{ object.procuring_entity }}</p><p><strong>Description:</strong> {{ object.description|default:"-" }}</p><p><strong>Source:</strong> {{ object.get_source_display }}</p><p><strong>Published:</strong> {{ object.published_at|date:"d/m/Y H:i:s"|default:"-" }}</p><p><strong>Closing:</strong> {{ object.closing_at|date:"d/m/Y H:i:s"|default:object.closing_date|default:"-" }}</p><p><strong>Method:</strong> {{ object.procurement_method|default:"-" }}</p><p><strong>Submission:</strong> {{ object.submission_method|default:"-" }}</p><p><strong>Bid security:</strong> {{ object.bid_security_amount|default:"-" }}</p><p><strong>Site visit:</strong> {{ object.site_visit_date|default:"-" }}</p>{% if object.imported_reference %}<p><a href="{{ object.imported_reference }}" target="_blank" rel="noopener">Open ZPPA page</a></p>{% endif %}{% if object.tender_document %}<a class="btn btn-primary" href="{{ object.tender_document.url }}">Download tender document</a>{% endif %}</div></div>
+  <div class="col-lg-6"><h2 class="h5">Requirements</h2><div class="list-group">{% for req in object.requirements.all %}<div class="list-group-item"><strong>{{ req.get_requirement_type_display }}</strong><br>{{ req.description }}</div>{% empty %}<div class="list-group-item text-muted">No requirements yet.</div>{% endfor %}</div><a class="btn btn-sm btn-outline-primary mt-3" href="{% url 'tenders:tender_requirement_create' object.pk %}">Add requirement</a></div>
+</div>
+<div class="card card-body mt-4">
+  <h2 class="h5">Solicitation document analysis</h2>
+  <form method="post" enctype="multipart/form-data" action="{% url 'tenders:upload_solicitation' object.pk %}" class="d-flex gap-2 align-items-end flex-wrap">
+    {% csrf_token %}
+    <div class="flex-grow-1">{{ solicitation_form.file.label_tag }}{{ solicitation_form.file }}</div>
+    <button class="btn btn-primary" type="submit">Upload solicitation document</button>
+  </form>
+  <div class="list-group mt-3">
+    {% for document in object.solicitation_documents.all %}
+      <div class="list-group-item">
+        <strong>{{ document.file.name }}</strong> uploaded {{ document.uploaded_at|date:"d/m/Y H:i" }}<br>
+        Required docs: {{ document.analysis_summary.required_documents|join:", "|default:"None found" }}
+      </div>
+    {% empty %}
+      <div class="list-group-item text-muted">No solicitation document uploaded yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% if object.zppa_details %}
+<div class="card card-body mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 mb-0">ZPPA tender details</h2>
+    {% if object.imported_reference %}<a class="btn btn-sm btn-outline-primary" href="{{ object.imported_reference }}" target="_blank" rel="noopener">View on ZPPA</a>{% endif %}
+  </div>
+  <dl class="zppa-detail-grid mb-0">
+    {% for row in object.zppa_details %}
+      <dt>{{ row.label }}:</dt>
+      <dd>{% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noopener">{{ row.value }}</a>{% else %}{{ row.value }}{% endif %}</dd>
+    {% endfor %}
+  </dl>
+</div>
+{% endif %}
+{% endblock %}

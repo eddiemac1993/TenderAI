@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">Bid packs</h1><a class="btn btn-primary" href="{% url 'bid_generator:create' %}">Create bid pack</a></div>
+<div class="list-group">{% for bidpack in bidpacks %}<a class="list-group-item list-group-item-action" href="{% url 'bid_generator:detail' bidpack.pk %}">{{ bidpack.company }} - {{ bidpack.tender }}</a>{% empty %}<div class="list-group-item text-muted">No bid packs.</div>{% endfor %}</div>
+{% endblock %}

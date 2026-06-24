@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">Companies</h1><a class="btn btn-primary" href="{% url 'companies:create' %}">Add company</a></div>
+<div class="list-group">{% for company in companies %}<a class="list-group-item list-group-item-action" href="{{ company.get_absolute_url }}">{{ company.name }} <span class="text-muted">{{ company.tpin }}</span></a>{% empty %}<div class="list-group-item text-muted">No companies yet.</div>{% endfor %}</div>
+{% endblock %}
