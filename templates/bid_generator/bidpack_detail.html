@@ -5,7 +5,8 @@
   <p><strong>Tender:</strong> {{ object.tender }}</p><p><strong>Company:</strong> {{ object.company }}</p><p><strong>Quotation:</strong> {{ object.quotation|default:"-" }}</p>
   <p><a class="btn btn-primary" href="{% url 'bid_generator:generate' object.pk %}">Generate DOCX/PDF</a>
   {% if object.generated_docx %}<a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'docx' %}">Download DOCX</a>{% endif %}
-  {% if object.generated_pdf %}<a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}">Download PDF</a>{% endif %}</p>
+  {% if object.generated_pdf %}<a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}?inline=1" target="_blank" rel="noopener">View PDF</a>
+  <a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}">Download PDF</a>{% endif %}</p>
   <h2 class="h5">Bid checklist</h2>
   <ul>{% for item in checklist %}<li>{{ item }}</li>{% endfor %}</ul>
   <p class="text-muted">DOCX and PDF generation hooks are ready for python-docx and ReportLab/WeasyPrint integration.</p>

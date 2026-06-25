@@ -60,7 +60,7 @@ def download_bid_pack_file(request, pk, file_type):
     try:
         return FileResponse(
             generated_file.open('rb'),
-            as_attachment=True,
+            as_attachment=request.GET.get('inline') != '1',
             filename=generated_file.name.rsplit('/', 1)[-1],
             content_type=content_type,
         )
