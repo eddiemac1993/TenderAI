@@ -202,6 +202,10 @@ def generate_bid_pack_docx(bid_pack):
 
 
 def add_pdf_cover_page(elements, bid_pack):
+    if is_raised_right(bid_pack.company):
+        add_raised_right_pdf_cover_page(elements, bid_pack)
+        return
+
     style = styles()
     company = bid_pack.company
     tender = bid_pack.tender
@@ -217,6 +221,46 @@ def add_pdf_cover_page(elements, bid_pack):
     elements.append(Paragraph(f'<b>TPIN:</b> {company.tpin or "-"}', style['BodyText']))
     elements.append(Paragraph(f'<b>Address:</b> {company.address or "-"}', style['BodyText']))
     elements.append(Paragraph(f'<b>Email / Phone:</b> {company.email or "-"} / {company.phone or "-"}', style['BodyText']))
+
+
+def is_raised_right(company):
+    return company.name.strip().lower() == 'raised right investments limited'
+
+
+def add_raised_right_pdf_cover_page(elements, bid_pack):
+    style = styles()
+    title_style = style['Title'].clone('RaisedRightCoverTitle')
+    title_style.alignment = 1
+    title_style.fontSize = 14
+    title_style.leading = 18
+    title_style.spaceAfter = 0
+
+    label_style = style['BodyText'].clone('RaisedRightCoverLabel')
+    label_style.alignment = 1
+    label_style.fontName = 'Helvetica-Bold'
+    label_style.fontSize = 12
+    label_style.leading = 16
+
+    body_style = style['BodyText'].clone('RaisedRightCoverBody')
+    body_style.alignment = 1
+    body_style.fontSize = 12
+    body_style.leading = 18
+
+    submitted_to = bid_pack.tender.procuring_entity or ''
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph('<b>TENDER</b>', title_style))
+    elements.append(Spacer(1, 92))
+    elements.append(Paragraph('<b>SUBMITTED TO:</b>', label_style))
+    if submitted_to:
+        elements.append(Spacer(1, 14))
+        elements.append(Paragraph(submitted_to, body_style))
+    elements.append(Spacer(1, 230 if submitted_to else 260))
+    elements.append(Paragraph('<b>SUBMITTED BY:</b>', label_style))
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph('Raised Right Investments Ltd', body_style))
+    elements.append(Paragraph('Plot No. 31C, Avondale, Off Great East Road', body_style))
+    elements.append(Paragraph('Lusaka, Zambia', body_style))
+    elements.append(Paragraph('Email: raisedright.zm@gmail.com', body_style))
 
 
 def add_pdf_table_of_contents(elements):
