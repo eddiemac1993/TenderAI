@@ -16,4 +16,5 @@ class CompanyDocumentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs.setdefault('class', 'form-control')
+            css_class = 'form-select' if isinstance(field.widget, forms.Select) else 'form-control'
+            field.widget.attrs.setdefault('class', css_class)
