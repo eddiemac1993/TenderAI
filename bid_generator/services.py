@@ -69,6 +69,9 @@ def company_document_checklist(company):
         CompanyDocument.DocumentType.TPIN_CERTIFICATE,
         CompanyDocument.DocumentType.NAPSA,
         CompanyDocument.DocumentType.WORKERS_COMPENSATION,
+        CompanyDocument.DocumentType.NCC,
+        CompanyDocument.DocumentType.ERB,
+        CompanyDocument.DocumentType.EIZ_CERTIFICATE,
         CompanyDocument.DocumentType.ZPPA_REGISTRATION,
         CompanyDocument.DocumentType.COMPANY_PROFILE,
     ]

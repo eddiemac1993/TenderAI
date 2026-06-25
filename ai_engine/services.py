@@ -68,6 +68,8 @@ def extract_required_documents(document_text):
         'NAPSA': ['napsa'],
         'Workers Compensation': ['workers compensation'],
         'NCC': ['ncc', 'national council for construction'],
+        'ERB Registration / Licence': ['erb', 'energy regulation board'],
+        'EIZ Certificate': ['eiz', 'engineering institution of zambia'],
         'ZPPA Registration': ['zppa registration', 'public procurement registration'],
         'Bank Confirmation Letter': ['bank confirmation', 'bank statement'],
         'Past Contracts': ['similar experience', 'past contracts', 'reference letters'],

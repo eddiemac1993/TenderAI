@@ -13,6 +13,8 @@ class CompanyDocument(models.Model):
         NAPSA = 'NAPSA', 'NAPSA'
         WORKERS_COMPENSATION = 'WORKERS_COMPENSATION', 'Workers Compensation'
         NCC = 'NCC', 'NCC'
+        ERB = 'ERB', 'ERB Registration / Licence'
+        EIZ_CERTIFICATE = 'EIZ_CERTIFICATE', 'EIZ Certificate'
         ZPPA_REGISTRATION = 'ZPPA_REGISTRATION', 'ZPPA Registration'
         BANK_CONFIRMATION = 'BANK_CONFIRMATION', 'Bank Confirmation Letter'
         PAST_CONTRACT = 'PAST_CONTRACT', 'Past Contract'
