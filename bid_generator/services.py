@@ -2,6 +2,7 @@ from io import BytesIO
 
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
+from pypdf import PdfReader, PdfWriter
 from reportlab.lib import colors
 from reportlab.platypus import PageBreak, Paragraph, Spacer, Table, TableStyle
 
@@ -138,7 +139,8 @@ def generate_bid_pack_pdf(bid_pack):
             elements.append(Spacer(1, 6))
 
     add_signature(elements, label='Authorised signatory')
-    return build_pdf_response(elements, f'Bid Pack - {bid_pack.tender.title}')
+    main_pdf = build_pdf_response(elements, f'Bid Pack - {bid_pack.tender.title}')
+    return append_company_certificate_pdfs(main_pdf, bid_pack)
 
 
 def generate_bid_pack_docx(bid_pack):
@@ -222,6 +224,51 @@ def add_pdf_table_of_contents(elements):
     rows = [['No.', 'Section']]
     rows.extend([[str(index), title] for index, title in enumerate(table_of_contents(), start=1)])
     elements.append(Table(rows, colWidths=[45, 390], style=table_style()))
+
+
+def append_company_certificate_pdfs(main_pdf, bid_pack):
+    pdf_documents = [
+        document for document in bid_pack.company.documents.all()
+        if document.file and document.file.name.lower().endswith('.pdf')
+    ]
+    if not pdf_documents:
+        return main_pdf
+
+    writer = PdfWriter()
+    append_pdf_bytes(writer, main_pdf)
+    for document in pdf_documents:
+        try:
+            divider = certificate_divider_pdf(document)
+            append_pdf_bytes(writer, divider)
+            with document.file.open('rb') as handle:
+                reader = PdfReader(handle)
+                for page in reader.pages:
+                    writer.add_page(page)
+        except Exception:
+            continue
+
+    buffer = BytesIO()
+    writer.write(buffer)
+    return buffer.getvalue()
+
+
+def append_pdf_bytes(writer, pdf_bytes):
+    reader = PdfReader(BytesIO(pdf_bytes))
+    for page in reader.pages:
+        writer.add_page(page)
+
+
+def certificate_divider_pdf(company_document):
+    style = styles()
+    elements = [
+        Paragraph('Company Certificate Attachment', style['Heading1']),
+        Spacer(1, 18),
+        Paragraph(f'<b>Document:</b> {company_document.get_document_type_display()}', style['BodyText']),
+        Paragraph(f'<b>Title:</b> {company_document.title}', style['BodyText']),
+        Paragraph(f'<b>Issue Date:</b> {company_document.issue_date or "-"}', style['BodyText']),
+        Paragraph(f'<b>Expiry Date:</b> {company_document.expiry_date or "No expiry"}', style['BodyText']),
+    ]
+    return build_pdf_response(elements, f'Attachment - {company_document.title}')
 
 
 def add_docx_cover_page(document, bid_pack):
