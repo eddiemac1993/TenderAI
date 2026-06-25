@@ -4,6 +4,7 @@ from django.core.files.base import ContentFile
 from django.http import HttpResponse
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import PageBreak, Paragraph, Spacer, Table, TableStyle
 
 from core.models import SystemSettings
@@ -260,13 +261,13 @@ def append_pdf_bytes(writer, pdf_bytes):
 
 def certificate_divider_pdf(company_document):
     style = styles()
+    title_style = style['Title']
+    title_style.alignment = 1
+    title_style.fontSize = 28
+    title_style.leading = 34
     elements = [
-        Paragraph('Company Certificate Attachment', style['Heading1']),
-        Spacer(1, 18),
-        Paragraph(f'<b>Document:</b> {company_document.get_document_type_display()}', style['BodyText']),
-        Paragraph(f'<b>Title:</b> {company_document.title}', style['BodyText']),
-        Paragraph(f'<b>Issue Date:</b> {company_document.issue_date or "-"}', style['BodyText']),
-        Paragraph(f'<b>Expiry Date:</b> {company_document.expiry_date or "No expiry"}', style['BodyText']),
+        Spacer(1, A4[1] * 0.36),
+        Paragraph(f'<b>{company_document.get_document_type_display()}</b>', title_style),
     ]
     return build_pdf_response(elements, f'Attachment - {company_document.title}')
 
