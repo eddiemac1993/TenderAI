@@ -19,7 +19,7 @@ def build_bid_checklist(bid_pack):
         'Cover letter',
         'Company profile summary',
         'Price schedule',
-        'Signed quotation',
+        'Priced schedule / bill of quantities',
     ]
     checklist.extend(requirement.description for requirement in requirements if requirement.is_mandatory)
     return checklist
@@ -93,12 +93,7 @@ def company_document_checklist(company):
 
 
 def price_schedule_rows(bid_pack):
-    if not bid_pack.quotation:
-        return []
-    return [
-        (item.description, item.quantity, item.unit_price, item.line_total)
-        for item in bid_pack.quotation.items.all()
-    ]
+    return []
 
 
 def generate_bid_pack_pdf(bid_pack):
@@ -125,14 +120,6 @@ def generate_bid_pack_pdf(bid_pack):
                 for kind, description, mandatory, action in requirements_matrix_rows(bid_pack)
             ])
             elements.append(Table(rows, colWidths=[95, 215, 65, 100], style=table_style()))
-            elements.append(Spacer(1, 6))
-
-        if title == 'Price Schedule' and bid_pack.quotation:
-            rows = [['Description', 'Qty', 'Unit', 'Total']]
-            for description, qty, unit, total in price_schedule_rows(bid_pack):
-                rows.append([Paragraph(description, style['BodyText']), str(qty), f'{currency} {unit:,.2f}', f'{currency} {total:,.2f}'])
-            rows.append(['', '', 'Grand total', f'{currency} {bid_pack.quotation.total:,.2f}'])
-            elements.append(Table(rows, colWidths=[230, 55, 95, 95], style=table_style()))
             elements.append(Spacer(1, 6))
 
         if title == 'Company Document Checklist':
@@ -171,18 +158,6 @@ def generate_bid_pack_docx(bid_pack):
                 cells[1].text = description
                 cells[2].text = mandatory
                 cells[3].text = action
-
-        if title == 'Price Schedule' and bid_pack.quotation:
-            table = document.add_table(rows=1, cols=4)
-            table.style = 'Table Grid'
-            for idx, heading in enumerate(['Description', 'Qty', 'Unit', 'Total']):
-                table.rows[0].cells[idx].text = heading
-            for description, qty, unit, total in price_schedule_rows(bid_pack):
-                cells = table.add_row().cells
-                cells[0].text = str(description)
-                cells[1].text = str(qty)
-                cells[2].text = f'{currency} {unit:,.2f}'
-                cells[3].text = f'{currency} {total:,.2f}'
 
         if title == 'Company Document Checklist':
             checklist_table = document.add_table(rows=1, cols=2)
@@ -372,9 +347,7 @@ def build_bid_sections(bid_pack):
             f'PACRA Registration: {company.registration_number or "-"}',
         ]),
         ('Price Schedule', [
-            'Attach the priced quotation or bill of quantities for this bid.'
-            if not bid_pack.quotation
-            else 'The attached price schedule is generated from the linked quotation.',
+            'Attach or complete the tender price schedule, bill of quantities, or financial offer required by the solicitation document.',
         ]),
         ('Company Document Checklist', [
             'Confirm that each mandatory company document is attached and valid at submission date.',

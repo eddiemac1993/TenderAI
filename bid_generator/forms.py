@@ -6,7 +6,7 @@ from .models import BidPack
 class BidPackForm(forms.ModelForm):
     class Meta:
         model = BidPack
-        fields = ['tender', 'company', 'quotation', 'include_cover_letter', 'include_checklist', 'include_company_profile', 'include_price_schedule']
+        fields = ['tender', 'company', 'include_cover_letter', 'include_checklist', 'include_company_profile', 'include_price_schedule']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -2,7 +2,7 @@
 {% block content %}
 <h1 class="h3 mb-3">Bid pack</h1>
 <div class="card card-body">
-  <p><strong>Tender:</strong> {{ object.tender }}</p><p><strong>Company:</strong> {{ object.company }}</p><p><strong>Quotation:</strong> {{ object.quotation|default:"-" }}</p>
+  <p><strong>Tender:</strong> {{ object.tender }}</p><p><strong>Company:</strong> {{ object.company }}</p>
   <p><a class="btn btn-primary" href="{% url 'bid_generator:generate' object.pk %}">Generate DOCX/PDF</a>
   {% if object.generated_docx %}<a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'docx' %}">Download DOCX</a>{% endif %}
   {% if object.generated_pdf %}<a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}?inline=1" target="_blank" rel="noopener">View PDF</a>

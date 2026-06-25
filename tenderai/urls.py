@@ -29,6 +29,5 @@ urlpatterns = [
     path('companies/', include('companies.urls')),
     path('documents/', include('documents.urls')),
     path('tenders/', include('tenders.urls')),
-    path('quotations/', include('quotations.urls')),
     path('bids/', include('bid_generator.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
