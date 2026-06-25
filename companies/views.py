@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_POST
@@ -8,6 +9,7 @@ from documents.services import sync_company_profile_from_documents
 
 from .forms import CompanyForm
 from .models import Company
+from .profile_pack import build_company_profile_pack
 
 
 class CompanyListView(ListView):
@@ -65,5 +67,11 @@ def sync_company_profile(request, pk):
             'No TPIN or PACRA registration number was found in the uploaded document text. If the PDFs are scanned images, enter profile values manually using Edit.',
         )
     return redirect(company.get_absolute_url())
+
+
+def download_company_profile_pack(request, pk):
+    company = get_object_or_404(Company, pk=pk)
+    buffer, filename = build_company_profile_pack(company)
+    return FileResponse(buffer, as_attachment=True, filename=filename, content_type='application/pdf')
  
 # Create your views here.

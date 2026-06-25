@@ -12,6 +12,7 @@
       {% csrf_token %}
       <button class="btn btn-outline-primary" type="submit">Sync from documents</button>
     </form>
+    <a class="btn btn-outline-success" href="{% url 'companies:profile_pack_pdf' object.pk %}">Generate profile</a>
     <a class="btn btn-primary" href="{% url 'companies:update' object.pk %}">Edit profile</a>
   </div>
 </div>
@@ -28,6 +29,7 @@
   </div>
   <div class="col-lg-5">
     <h2 class="h5">Documents</h2>
+    <p class="text-muted small">Upload the main company profile as document type <strong>Company Profile</strong>. Generate profile will place that file first, then attach certificate PDFs.</p>
     <div class="list-group">
       {% for doc in object.documents.all %}
         <a class="list-group-item" href="{{ doc.get_absolute_url }}">{{ doc.get_document_type_display }} - {{ doc.expiry_date|default:"No expiry" }}</a>
