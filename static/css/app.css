@@ -73,6 +73,7 @@ body {
 .app-form {
   padding: 1.25rem;
   max-width: 920px;
+  position: relative;
 }
 
 .app-form p {
@@ -91,6 +92,8 @@ body {
   border-color: #ccd6e0;
   border-radius: 7px;
   min-height: 42px;
+  position: relative;
+  z-index: 1;
 }
 
 .form-control:focus,
