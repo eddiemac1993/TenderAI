@@ -12,6 +12,12 @@ DOC_KEYWORDS = {
     'tpin': CompanyDocument.DocumentType.TPIN_CERTIFICATE,
     'napsa': CompanyDocument.DocumentType.NAPSA,
     'workers compensation': CompanyDocument.DocumentType.WORKERS_COMPENSATION,
+    'ncc b': CompanyDocument.DocumentType.NCC_B,
+    'ncc-b': CompanyDocument.DocumentType.NCC_B,
+    'ncc r': CompanyDocument.DocumentType.NCC_R,
+    'ncc-r': CompanyDocument.DocumentType.NCC_R,
+    'ncc e': CompanyDocument.DocumentType.NCC_E,
+    'ncc-e': CompanyDocument.DocumentType.NCC_E,
     'ncc': CompanyDocument.DocumentType.NCC,
     'erb': CompanyDocument.DocumentType.ERB,
     'energy regulation board': CompanyDocument.DocumentType.ERB,
@@ -24,6 +30,12 @@ DOC_KEYWORDS = {
 
 KEYWORD_DOC_REQUIREMENTS = {
     'construction': CompanyDocument.DocumentType.NCC,
+    'ncc b': CompanyDocument.DocumentType.NCC_B,
+    'ncc-b': CompanyDocument.DocumentType.NCC_B,
+    'ncc r': CompanyDocument.DocumentType.NCC_R,
+    'ncc-r': CompanyDocument.DocumentType.NCC_R,
+    'ncc e': CompanyDocument.DocumentType.NCC_E,
+    'ncc-e': CompanyDocument.DocumentType.NCC_E,
     'ncc': CompanyDocument.DocumentType.NCC,
     'erb': CompanyDocument.DocumentType.ERB,
     'energy regulation board': CompanyDocument.DocumentType.ERB,
@@ -36,6 +48,13 @@ KEYWORD_DOC_REQUIREMENTS = {
     'napsa': CompanyDocument.DocumentType.NAPSA,
     'similar experience': CompanyDocument.DocumentType.PAST_CONTRACT,
     'past contract': CompanyDocument.DocumentType.PAST_CONTRACT,
+}
+
+NCC_ALTERNATE_TYPES = {
+    CompanyDocument.DocumentType.NCC,
+    CompanyDocument.DocumentType.NCC_B,
+    CompanyDocument.DocumentType.NCC_R,
+    CompanyDocument.DocumentType.NCC_E,
 }
 
 
@@ -86,7 +105,12 @@ def calculate_tender_matches(tender):
         docs = list(company.documents.all())
         active_types = {doc.document_type for doc in docs if not doc.expiry_date or doc.expiry_date >= today}
         expired_types = {doc.document_type for doc in docs if doc.expiry_date and doc.expiry_date < today}
+        effective_active_types = set(active_types)
+        if active_types & NCC_ALTERNATE_TYPES:
+            effective_active_types.add(CompanyDocument.DocumentType.NCC)
         missing = sorted(required_docs - active_types - expired_types)
+        if CompanyDocument.DocumentType.NCC in required_docs and effective_active_types & NCC_ALTERNATE_TYPES:
+            missing = [doc_type for doc_type in missing if doc_type != CompanyDocument.DocumentType.NCC]
         expired = sorted(required_docs & expired_types)
 
         score = 35
@@ -95,7 +119,10 @@ def calculate_tender_matches(tender):
         elif tender.category:
             score -= 10
         if required_docs:
-            score += int(35 * (len(required_docs - set(missing) - set(expired)) / len(required_docs)))
+            met_docs = required_docs - set(missing) - set(expired)
+            if CompanyDocument.DocumentType.NCC in required_docs and effective_active_types & NCC_ALTERNATE_TYPES:
+                met_docs.add(CompanyDocument.DocumentType.NCC)
+            score += int(35 * (len(met_docs) / len(required_docs)))
         else:
             score += 10
         if signals['bid_security']:
