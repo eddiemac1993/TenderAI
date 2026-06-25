@@ -30,4 +30,22 @@ class TenderAnalysisRun(models.Model):
     def __str__(self):
         return f'Analysis for {self.tender}'
 
-# Create your models here.
+
+class TenderChatMessage(models.Model):
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name='chat_messages')
+    solicitation_document = models.ForeignKey(
+        SolicitationDocument,
+        on_delete=models.SET_NULL,
+        related_name='chat_messages',
+        blank=True,
+        null=True,
+    )
+    question = models.TextField()
+    answer = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Chat for {self.tender}: {self.question[:60]}'

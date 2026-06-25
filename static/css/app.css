@@ -204,6 +204,31 @@ textarea.form-control {
   color: var(--app-ink);
 }
 
+.chat-thread {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.chat-message {
+  background: #f8fbfd;
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-radius);
+  padding: 1rem;
+}
+
+.chat-question {
+  color: #344054;
+  margin-bottom: 0.75rem;
+}
+
+.chat-answer {
+  background: #fff;
+  border-left: 4px solid var(--app-primary);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  white-space: normal;
+}
+
 @media (max-width: 767px) {
   .app-shell {
     padding-top: 1rem;

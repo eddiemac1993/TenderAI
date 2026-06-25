@@ -1,4 +1,5 @@
 import re
+from textwrap import shorten
 
 from docx import Document as DocxDocument
 from pypdf import PdfReader
@@ -104,6 +105,128 @@ def candidate_lines(document_text, keywords):
         if any(keyword in lower for keyword in keywords):
             lines.append(clean[:300])
     return lines
+
+
+def answer_tender_question(tender, question):
+    document = tender.solicitation_documents.order_by('-uploaded_at').first()
+    if not document or not document.extracted_text.strip():
+        return (
+            'Please upload a solicitation document first. Once the PDF or DOCX is uploaded, '
+            'I can read the extracted text and guide you on required documents, dates, forms, '
+            'evaluation criteria, bid security, site visit, and next steps.'
+        ), document
+
+    question_lower = question.lower()
+    text = document.extracted_text
+    analysis = document.analysis_summary or analyze_tender_document(text)
+    answer_parts = []
+
+    if any(word in question_lower for word in ['next', 'do', 'steps', 'prepare', 'checklist']):
+        answer_parts.append(build_next_steps_answer(tender, analysis))
+    if any(word in question_lower for word in ['document', 'certificate', 'requirement', 'required']):
+        answer_parts.append(build_required_documents_answer(analysis))
+    if any(word in question_lower for word in ['date', 'deadline', 'closing', 'opening', 'clarification', 'site visit']):
+        answer_parts.append(build_dates_answer(tender, analysis, text))
+    if any(word in question_lower for word in ['evaluation', 'criteria', 'score', 'responsive']):
+        answer_parts.append(build_list_answer('Evaluation criteria found', analysis.get('evaluation_criteria', [])))
+    if any(word in question_lower for word in ['form', 'forms', 'letter', 'declaration', 'power of attorney']):
+        answer_parts.append(build_list_answer('Forms and declarations found', analysis.get('forms_required', [])))
+    if any(word in question_lower for word in ['security', 'bid bond', 'bid securing']):
+        answer_parts.append(build_bid_security_answer(analysis, text))
+
+    if not answer_parts:
+        relevant_lines = find_relevant_lines(text, question)
+        if relevant_lines:
+            answer_parts.append(build_list_answer('Most relevant lines I found', relevant_lines[:8]))
+        else:
+            answer_parts.append(build_next_steps_answer(tender, analysis))
+            answer_parts.append(
+                'I could not find an exact phrase match for your question, so I summarized the strongest bid actions from the uploaded solicitation.'
+            )
+
+    answer_parts.append(
+        'Note: this is rule-based analysis from the uploaded document text. Please confirm against the original solicitation before submission.'
+    )
+    return '\n\n'.join(part for part in answer_parts if part), document
+
+
+def build_next_steps_answer(tender, analysis):
+    steps = []
+    required_documents = analysis.get('required_documents', [])
+    if required_documents:
+        steps.append('Confirm these documents are valid and not expired: ' + ', '.join(required_documents) + '.')
+    if analysis.get('bid_security_required'):
+        steps.append('Prepare the required bid security or bid securing declaration.')
+    if analysis.get('site_visit_required') or tender.site_visit_date:
+        steps.append('Confirm whether the site visit is mandatory and record attendance evidence.')
+    if analysis.get('forms_required'):
+        steps.append('Complete the required forms/declarations listed in the solicitation.')
+    if tender.closing_at or tender.closing_date:
+        deadline = tender.closing_at or tender.closing_date
+        steps.append(f'Work backwards from the submission deadline: {deadline}.')
+    steps.append('Generate a bid pack, then review the cover letter, checklist, price schedule, company profile, and certificate attachments.')
+    return build_list_answer('Recommended next steps', steps)
+
+
+def build_required_documents_answer(analysis):
+    documents = analysis.get('required_documents', [])
+    if not documents:
+        return 'Required documents: I did not detect clear certificate names yet. Check the solicitation manually for a mandatory requirements table.'
+    return build_list_answer('Required documents detected', documents)
+
+
+def build_dates_answer(tender, analysis, document_text):
+    dates = []
+    if tender.closing_at:
+        dates.append(f'Closing deadline from tender record: {tender.closing_at}')
+    elif tender.closing_date:
+        dates.append(f'Closing date from tender record: {tender.closing_date}')
+    if tender.site_visit_date:
+        dates.append(f'Site visit date from tender record: {tender.site_visit_date}')
+    dates.extend(analysis.get('dates', [])[:12])
+    if not dates:
+        dates = candidate_lines(document_text, ['deadline', 'closing', 'opening', 'clarification', 'site visit'])[:8]
+    return build_list_answer('Dates and deadline signals', dates)
+
+
+def build_bid_security_answer(analysis, document_text):
+    lines = candidate_lines(document_text, ['bid security', 'bid securing', 'bid bond', 'security amount', 'declaration'])[:8]
+    if analysis.get('bid_security_required'):
+        return build_list_answer('Bid security appears to be required or mentioned', lines or ['Confirm the amount/type in the solicitation.'])
+    return 'Bid security: I did not detect a clear bid security requirement, but please confirm in the solicitation document.'
+
+
+def build_list_answer(title, items):
+    if not items:
+        return f'{title}: none clearly detected.'
+    lines = [f'{title}:']
+    for item in items:
+        lines.append(f'- {shorten(str(item), width=260, placeholder="...")}')
+    return '\n'.join(lines)
+
+
+def find_relevant_lines(document_text, question):
+    terms = [term for term in re.findall(r'[a-zA-Z][a-zA-Z0-9-]{2,}', question.lower()) if term not in STOP_WORDS]
+    if not terms:
+        return []
+    scored = []
+    for line in document_text.splitlines():
+        clean = re.sub(r'\s+', ' ', line).strip()
+        if len(clean) < 4:
+            continue
+        lower = clean.lower()
+        score = sum(1 for term in terms if term in lower)
+        if score:
+            scored.append((score, clean[:300]))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [line for _, line in scored]
+
+
+STOP_WORDS = {
+    'what', 'when', 'where', 'which', 'with', 'that', 'this', 'from', 'have',
+    'need', 'should', 'could', 'would', 'about', 'after', 'before', 'tender',
+    'solicitation', 'document', 'please', 'give', 'show',
+}
 
 
 def process_solicitation_document(solicitation_document):

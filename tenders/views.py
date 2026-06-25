@@ -7,9 +7,10 @@ from django.urls import reverse, reverse_lazy
 from django.utils.dateparse import parse_datetime
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
-from ai_engine.forms import SolicitationDocumentForm
-from ai_engine.models import SolicitationDocument
+from ai_engine.forms import SolicitationDocumentForm, TenderChatForm
+from ai_engine.models import SolicitationDocument, TenderChatMessage
 from ai_engine.services import PlaceholderTenderAnalysisService
+from ai_engine.services import answer_tender_question
 from ai_engine.services import process_solicitation_document
 from companies.models import BusinessCategory, Company
 from documents.models import CompanyDocument
@@ -33,6 +34,8 @@ class TenderDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['solicitation_form'] = SolicitationDocumentForm()
+        context['chat_form'] = TenderChatForm()
+        context['chat_messages'] = self.object.chat_messages.select_related('solicitation_document')[:8]
         return context
 
 
@@ -212,4 +215,24 @@ def upload_solicitation_document(request, pk):
         )
     else:
         messages.error(request, 'Could not upload solicitation document. Please choose a PDF, DOCX, or text file.')
+    return redirect(tender)
+
+
+def ask_tender_chatbot(request, pk):
+    tender = get_object_or_404(Tender, pk=pk)
+    if request.method != 'POST':
+        return redirect(tender)
+    form = TenderChatForm(request.POST)
+    if form.is_valid():
+        question = form.cleaned_data['question']
+        answer, document = answer_tender_question(tender, question)
+        TenderChatMessage.objects.create(
+            tender=tender,
+            solicitation_document=document,
+            question=question,
+            answer=answer,
+        )
+        messages.success(request, 'TenderAI answered your question from the uploaded solicitation document.')
+    else:
+        messages.error(request, 'Please type a question for TenderAI.')
     return redirect(tender)

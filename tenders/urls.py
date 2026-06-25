@@ -21,4 +21,5 @@ urlpatterns = [
     path('<int:pk>/match/', views.TenderMatchView.as_view(), name='match'),
     path('<int:pk>/analyze-placeholder/', views.analyze_tender_placeholder, name='analyze_placeholder'),
     path('<int:pk>/upload-solicitation/', views.upload_solicitation_document, name='upload_solicitation'),
+    path('<int:pk>/ask/', views.ask_tender_chatbot, name='ask_chatbot'),
 ]

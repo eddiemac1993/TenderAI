@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import SolicitationDocument, TenderAnalysisRun
+from .models import SolicitationDocument, TenderAnalysisRun, TenderChatMessage
 
 
 @admin.register(SolicitationDocument)
@@ -14,4 +14,9 @@ class TenderAnalysisRunAdmin(admin.ModelAdmin):
     list_display = ('tender', 'status', 'created_at')
     readonly_fields = ('created_at',)
 
-# Register your models here.
+
+@admin.register(TenderChatMessage)
+class TenderChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('tender', 'question', 'created_at')
+    readonly_fields = ('created_at',)
+    search_fields = ('tender__title', 'question', 'answer')

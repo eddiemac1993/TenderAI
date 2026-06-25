@@ -23,6 +23,31 @@
     {% endfor %}
   </div>
 </div>
+<div class="card card-body mt-4">
+  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+    <div>
+      <h2 class="h5 mb-1">TenderAI document chat</h2>
+      <p class="text-muted mb-0">Ask questions after uploading a solicitation document. The answer is based on the extracted document text.</p>
+    </div>
+  </div>
+  <form method="post" action="{% url 'tenders:ask_chatbot' object.pk %}" class="mt-3">
+    {% csrf_token %}
+    {{ chat_form.question.label_tag }}
+    {{ chat_form.question }}
+    <button class="btn btn-primary mt-2" type="submit">Ask TenderAI</button>
+  </form>
+  <div class="chat-thread mt-4">
+    {% for message in chat_messages %}
+      <div class="chat-message">
+        <div class="chat-question"><strong>You asked:</strong> {{ message.question }}</div>
+        <div class="chat-answer"><strong>TenderAI:</strong><br>{{ message.answer|linebreaksbr }}</div>
+        <div class="text-muted small mt-2">{{ message.created_at|date:"d/m/Y H:i" }}{% if message.solicitation_document %} based on {{ message.solicitation_document.file.name }}{% endif %}</div>
+      </div>
+    {% empty %}
+      <div class="text-muted">No chat questions yet. Try asking: "What documents are required and what should I do next?"</div>
+    {% endfor %}
+  </div>
+</div>
 {% if object.zppa_details %}
 <div class="card card-body mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
