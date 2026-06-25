@@ -19,7 +19,7 @@
         <a class="nav-link" href="{% url 'documents:list' %}">Documents</a>
         <a class="nav-link" href="{% url 'tenders:list' %}">Tenders</a>
         <a class="nav-link" href="{% url 'bid_generator:list' %}">Bid Packs</a>
-        <a class="nav-link" href="{% url 'core:settings' %}">Settings</a>
+        <a class="nav-link" href="{% url 'companies:list' %}">Generate Profiles</a>
         <a class="nav-link" href="{% url 'admin:index' %}">Admin</a>
         {% if user.is_authenticated %}<a class="nav-link" href="{% url 'logout' %}">Logout</a>{% endif %}
       </div>
