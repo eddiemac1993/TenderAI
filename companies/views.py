@@ -62,7 +62,7 @@ def sync_company_profile(request, pk):
     else:
         messages.warning(
             request,
-            'No profile values were found in the uploaded document text. If the PDFs are scanned images, enter TPIN, registration, phone, and email manually using Edit.',
+            'No TPIN or PACRA registration number was found in the uploaded document text. If the PDFs are scanned images, enter profile values manually using Edit.',
         )
     return redirect(company.get_absolute_url())
  
