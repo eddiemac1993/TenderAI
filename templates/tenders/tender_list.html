@@ -1,5 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3"><h1 class="h3">Tenders</h1><div class="d-flex gap-2 flex-wrap"><a class="btn btn-outline-success" href="{% url 'tenders:zppa_scrape_today' %}">Scrape today</a><a class="btn btn-outline-secondary" href="{% url 'tenders:zppa_scrape_logs' %}">Scrape logs</a><a class="btn btn-outline-primary" href="{% url 'tenders:zppa_import_json' %}">Import ZPPA JSON</a><a class="btn btn-outline-primary" href="{% url 'tenders:zppa_import' %}">Manual ZPPA import</a><a class="btn btn-primary" href="{% url 'tenders:create' %}">Add tender</a></div></div>
-<div class="table-responsive"><table class="table table-striped"><tr><th>Title</th><th>Entity</th><th>Published</th><th>Closing</th><th>Method</th><th>Status</th><th></th></tr>{% for tender in tenders %}<tr><td>{{ tender.title }}</td><td>{{ tender.procuring_entity }}</td><td>{{ tender.published_at|date:"d/m/Y H:i"|default:"-" }}</td><td>{{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</td><td>{{ tender.procurement_method|default:"-" }}</td><td>{{ tender.get_status_display }}</td><td><a href="{{ tender.get_absolute_url }}">View</a></td></tr>{% empty %}<tr><td colspan="7" class="text-muted">No tenders yet.</td></tr>{% endfor %}</table></div>
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+  <div>
+    <p class="eyebrow mb-1">Latest first</p>
+    <h1 class="h3 mb-1">Tenders</h1>
+    <p class="text-muted mb-0">Use the ZPPA method shortcuts below to quickly separate open national and simplified bidding opportunities.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-success" href="{% url 'tenders:zppa_scrape_today' %}">Scrape today</a>
+    <a class="btn btn-outline-secondary" href="{% url 'tenders:zppa_scrape_logs' %}">Scrape logs</a>
+    <a class="btn btn-outline-primary" href="{% url 'tenders:zppa_import_json' %}">Import ZPPA JSON</a>
+    <a class="btn btn-outline-primary" href="{% url 'tenders:zppa_import' %}">Manual ZPPA import</a>
+    <a class="btn btn-primary" href="{% url 'tenders:create' %}">Add tender</a>
+  </div>
+</div>
+
+<div class="tender-filter-bar mb-3">
+  <a class="filter-pill {% if not active_method %}active{% endif %}" href="{% url 'tenders:list' %}">All latest</a>
+  <a class="filter-pill {% if active_method == 'open-national' %}active{% endif %}" href="{% url 'tenders:list' %}?method=open-national">Open Bidding National <span>{{ open_national_count }}</span></a>
+  <a class="filter-pill {% if active_method == 'simplified' %}active{% endif %}" href="{% url 'tenders:list' %}?method=simplified">Simplified Bidding <span>{{ simplified_count }}</span></a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-striped tender-table">
+    <tr><th>Title</th><th>Entity</th><th>Published</th><th>Closing</th><th>Method</th><th>Status</th><th></th></tr>
+    {% for tender in tenders %}
+      <tr>
+        <td class="tender-title-cell">{{ tender.title }}</td>
+        <td>{{ tender.procuring_entity }}</td>
+        <td>{{ tender.published_at|date:"d/m/Y H:i"|default:"-" }}</td>
+        <td>{{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</td>
+        <td>{{ tender.procurement_method|default:"-" }}</td>
+        <td>{{ tender.get_status_display }}</td>
+        <td><a class="btn btn-sm btn-outline-primary" href="{{ tender.get_absolute_url }}">View</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="text-muted">No tenders found for this filter.</td></tr>
+    {% endfor %}
+  </table>
+</div>
 {% endblock %}

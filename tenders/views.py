@@ -1,6 +1,8 @@
 import json
 
 from django.contrib import messages
+from django.db.models import Q
+from django.db.models.functions import Coalesce
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -25,6 +27,34 @@ class TenderListView(ListView):
     model = Tender
     template_name = 'tenders/tender_list.html'
     context_object_name = 'tenders'
+
+    def get_queryset(self):
+        queryset = (
+            super()
+            .get_queryset()
+            .annotate(latest_at=Coalesce('published_at', 'created_at'))
+        )
+        method = self.request.GET.get('method', '')
+        if method == 'simplified':
+            queryset = queryset.filter(
+                Q(procurement_method__icontains='simplified')
+                | Q(procurement_method__icontains='shopping')
+                | Q(procurement_method__icontains='request for quotation')
+            )
+        elif method == 'open-national':
+            queryset = queryset.filter(procurement_method__icontains='Open Bidding National')
+        return queryset.order_by('-latest_at', '-id')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_method'] = self.request.GET.get('method', '')
+        context['open_national_count'] = Tender.objects.filter(procurement_method__icontains='Open Bidding National').count()
+        context['simplified_count'] = Tender.objects.filter(
+            Q(procurement_method__icontains='simplified')
+            | Q(procurement_method__icontains='shopping')
+            | Q(procurement_method__icontains='request for quotation')
+        ).count()
+        return context
 
 
 class TenderDetailView(DetailView):

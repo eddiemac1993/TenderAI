@@ -9,6 +9,8 @@
   --app-accent: #d99a26;
   --app-radius: 8px;
   --app-shadow: 0 10px 28px rgba(16, 24, 40, 0.08);
+  --font-sans: "Aptos", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Aptos Display", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
@@ -16,7 +18,36 @@ body {
     linear-gradient(180deg, rgba(22, 93, 89, 0.08), transparent 280px),
     var(--app-bg);
   color: var(--app-ink);
+  font-family: var(--font-sans);
   font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6,
+.navbar-brand {
+  color: var(--app-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.h3 {
+  font-size: 1.45rem;
 }
 
 .app-navbar {
@@ -25,12 +56,16 @@ body {
 }
 
 .navbar-brand {
+  color: #fff;
+  font-size: 1.08rem;
   letter-spacing: 0.01em;
 }
 
 .navbar-dark .navbar-nav .nav-link {
   color: rgba(255, 255, 255, 0.78);
   border-radius: 6px;
+  font-size: 0.93rem;
+  font-weight: 600;
   margin: 0 2px;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
@@ -57,7 +92,7 @@ body {
 .eyebrow {
   color: var(--app-primary);
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -83,7 +118,8 @@ body {
 .app-form label {
   color: #344054;
   display: block;
-  font-weight: 650;
+  font-size: 0.9rem;
+  font-weight: 600;
   margin-bottom: 0.35rem;
 }
 
@@ -94,6 +130,8 @@ body {
   min-height: 42px;
   position: relative;
   z-index: 1;
+  font-family: var(--font-sans);
+  font-size: 0.96rem;
 }
 
 .form-control:focus,
@@ -116,7 +154,10 @@ textarea.form-control {
 
 .btn {
   border-radius: 7px;
-  font-weight: 650;
+  font-family: var(--font-sans);
+  font-size: 0.93rem;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .btn-primary {
@@ -164,8 +205,67 @@ textarea.form-control {
   background: #edf4f3;
   color: #344054;
   font-size: 0.78rem;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.table td,
+.list-group-item,
+.card,
+.alert {
+  font-size: 0.96rem;
+}
+
+.tender-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.filter-pill {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--app-line);
+  border-radius: 999px;
+  color: #344054;
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 700;
+  gap: 0.45rem;
+  line-height: 1;
+  padding: 0.62rem 0.9rem;
+  text-decoration: none;
+}
+
+.filter-pill:hover,
+.filter-pill:focus,
+.filter-pill.active {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+  color: #fff;
+}
+
+.filter-pill span {
+  background: rgba(22, 93, 89, 0.1);
+  border-radius: 999px;
+  color: inherit;
+  font-size: 0.78rem;
+  padding: 0.18rem 0.45rem;
+}
+
+.filter-pill.active span,
+.filter-pill:hover span,
+.filter-pill:focus span {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.tender-table td {
+  vertical-align: middle;
+}
+
+.tender-title-cell {
+  font-weight: 700;
 }
 
 .list-group {
@@ -199,7 +299,8 @@ textarea.form-control {
 
 .zppa-detail-grid dt {
   color: #344054;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 800;
   padding-right: 1rem;
 }
 
