@@ -1,50 +1,128 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - TenderAI{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Procurement dashboard</h1>
-  <div class="d-flex gap-2">
-    <a class="btn btn-outline-success" href="{% url 'tenders:zppa_scrape_today' %}">Scrape today</a>
-    <a class="btn btn-primary" href="{% url 'tenders:zppa_import' %}">Manual ZPPA import</a>
+<section class="dashboard-hero mb-4">
+  <div>
+    <p class="eyebrow mb-1">Procurement command center</p>
+    <h1 class="display-title mb-2">TenderAI</h1>
+    <p class="hero-copy mb-0">Scrape public ZPPA tenders locally, review urgent opportunities, check company readiness, and prepare bid packs from one place.</p>
   </div>
+  <div class="hero-actions">
+    <a class="btn btn-light btn-lg" href="{% url 'tenders:zppa_scrape_today' %}">Scrape ZPPA today</a>
+    <a class="btn btn-outline-light" href="{% url 'tenders:list' %}">View tenders</a>
+    <a class="btn btn-outline-light" href="{% url 'tenders:zppa_scrape_logs' %}">Scrape logs</a>
+  </div>
+</section>
+
+<div class="metric-grid mb-4">
+  <a class="metric-card" href="{% url 'companies:list' %}"><span>Companies</span><strong>{{ company_count }}</strong></a>
+  <a class="metric-card" href="{% url 'tenders:list' %}"><span>Total tenders</span><strong>{{ total_tenders }}</strong></a>
+  <a class="metric-card metric-warning" href="{% url 'tenders:list' %}?period=closing_7"><span>Closing in 7 days</span><strong>{{ closing_7_days|length }}</strong></a>
+  <a class="metric-card metric-warning" href="{% url 'documents:list' %}?status=expiring_30"><span>Docs expiring soon</span><strong>{{ expiring_documents|length }}</strong></a>
 </div>
-<div class="row g-3 mb-4">
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Companies</div><div class="fs-3">{{ company_count }}</div></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Total tenders</div><div class="fs-3">{{ total_tenders }}</div></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Closing in 7 days</div><div class="fs-3">{{ closing_7_days|length }}</div></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Expired docs</div><div class="fs-3">{{ expired_documents|length }}</div></div></div></div>
-</div>
-<div class="row g-3 mb-4">
-  <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Missing bid security check</div><div class="fs-3">{{ bid_security_tenders|length }}</div></div></div></div>
-  <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Require site visit</div><div class="fs-3">{{ site_visit_tenders|length }}</div></div></div></div>
-  <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Incomplete company profiles</div><div class="fs-3">{{ incomplete_companies|length }}</div></div></div></div>
-</div>
+
 <div class="row g-4">
-  <div class="col-lg-6">
-    <h2 class="h5">Tenders closing soon</h2>
-    <div class="list-group">
-      {% for tender in closing_soon %}<a class="list-group-item list-group-item-action" href="{{ tender.get_absolute_url }}">{{ tender.title }} <span class="text-muted">({{ tender.closing_date }})</span></a>{% empty %}<div class="list-group-item text-muted">No tenders closing in the next 14 days.</div>{% endfor %}
+  <div class="col-xl-7">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">Latest ZPPA tenders</h2>
+          <p class="text-muted mb-0">Newest opportunities appear first after scraping.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:list' %}">Open list</a>
+      </div>
+      <div class="tender-card-list">
+        {% for tender in latest_tenders %}
+          <a class="mini-tender-card" href="{{ tender.get_absolute_url }}">
+            <div>
+              <strong>{{ tender.title }}</strong>
+              <span>{{ tender.procuring_entity }}</span>
+            </div>
+            <div class="mini-card-meta">
+              <span class="badge text-bg-{{ tender.urgency_class }}">{{ tender.urgency_label }}</span>
+              <small>{{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</small>
+            </div>
+          </a>
+        {% empty %}
+          <div class="empty-state">No tenders yet. Click <strong>Scrape ZPPA today</strong> to fetch public opportunities.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
-  <div class="col-lg-6">
-    <h2 class="h5">Best matched tenders</h2>
-    <div class="list-group">
-      {% for match in best_matches %}<a class="list-group-item list-group-item-action" href="{% url 'tenders:match' match.tender_id %}">{{ match.tender }} - {{ match.company }} <span class="badge text-bg-success">{{ match.score }}%</span></a>{% empty %}<div class="list-group-item text-muted">Run matching from a tender page to populate this list.</div>{% endfor %}
+  <div class="col-xl-5">
+    <div class="section-panel h-100">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">Closing soon</h2>
+          <p class="text-muted mb-0">Treat these as the first review queue.</p>
+        </div>
+      </div>
+      <div class="list-group plain-list">
+        {% for tender in closing_soon %}
+          <a class="list-group-item list-group-item-action" href="{{ tender.get_absolute_url }}">
+            <div class="d-flex justify-content-between gap-3">
+              <strong>{{ tender.title }}</strong>
+              <span class="badge text-bg-{{ tender.urgency_class }}">{{ tender.urgency_label }}</span>
+            </div>
+            <small class="text-muted">{{ tender.procuring_entity }} · {{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date }}</small>
+          </a>
+        {% empty %}
+          <div class="empty-state">No tenders closing in the next 14 days.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 </div>
+
 <div class="row g-4 mt-1">
   <div class="col-lg-4">
-    <h2 class="h5">Bid security needed</h2>
-    <div class="list-group">{% for tender in bid_security_tenders %}<a class="list-group-item list-group-item-action" href="{{ tender.get_absolute_url }}">{{ tender.title }}</a>{% empty %}<div class="list-group-item text-muted">No bid security signals found.</div>{% endfor %}</div>
+    <div class="section-panel h-100">
+      <h2 class="h5">Best opportunities</h2>
+      <div class="list-group plain-list">
+        {% for match in best_matches %}
+          <a class="list-group-item list-group-item-action" href="{% url 'tenders:match' match.tender_id %}">
+            <div class="d-flex justify-content-between gap-2">
+              <strong>{{ match.tender }}</strong>
+              <span class="badge text-bg-success">{{ match.score }}%</span>
+            </div>
+            <small class="text-muted">{{ match.company }}</small>
+          </a>
+        {% empty %}
+          <div class="empty-state">Run matching from a tender page to populate this list.</div>
+        {% endfor %}
+      </div>
+    </div>
   </div>
   <div class="col-lg-4">
-    <h2 class="h5">Site visits</h2>
-    <div class="list-group">{% for tender in site_visit_tenders %}<a class="list-group-item list-group-item-action" href="{{ tender.get_absolute_url }}">{{ tender.title }}</a>{% empty %}<div class="list-group-item text-muted">No site visit signals found.</div>{% endfor %}</div>
+    <div class="section-panel h-100">
+      <h2 class="h5">Tender warnings</h2>
+      <div class="warning-stack">
+        <a href="{% url 'tenders:list' %}" class="warning-tile"><span>Bid security mentions</span><strong>{{ bid_security_tenders|length }}</strong></a>
+        <a href="{% url 'tenders:list' %}" class="warning-tile"><span>Site visit mentions</span><strong>{{ site_visit_tenders|length }}</strong></a>
+        <a href="{% url 'companies:list' %}" class="warning-tile"><span>Incomplete profiles</span><strong>{{ incomplete_companies|length }}</strong></a>
+      </div>
+    </div>
   </div>
   <div class="col-lg-4">
-    <h2 class="h5">Incomplete profiles</h2>
-    <div class="list-group">{% for company in incomplete_companies %}<a class="list-group-item list-group-item-action" href="{{ company.get_absolute_url }}">{{ company.name }}</a>{% empty %}<div class="list-group-item text-muted">Company profiles look complete.</div>{% endfor %}</div>
+    <div class="section-panel h-100">
+      <h2 class="h5">Document problems</h2>
+      <div class="list-group plain-list">
+        {% for document in expiring_documents %}
+          <a class="list-group-item list-group-item-action" href="{{ document.get_absolute_url }}">
+            <strong>{{ document.company.name }}</strong>
+            <div class="text-warning small">{{ document.get_document_type_display }} {{ document.status_label }} - {{ document.expiry_date }}</div>
+          </a>
+        {% endfor %}
+        {% for document in expired_documents %}
+          <a class="list-group-item list-group-item-action" href="{{ document.get_absolute_url }}">
+            <strong>{{ document.company.name }}</strong>
+            <div class="text-muted small">{{ document.get_document_type_display }} expired {{ document.expiry_date }}</div>
+          </a>
+        {% empty %}
+          {% if not expiring_documents %}<div class="empty-state">No expired or expiring documents found.</div>{% endif %}
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

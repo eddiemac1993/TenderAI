@@ -19,15 +19,21 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from .views import DashboardView
+from core.views import AppUpdateView, run_app_update
+
+from .views import AboutView, DashboardView
 
 urlpatterns = [
     path('', DashboardView.as_view(), name='dashboard'),
+    path('about/', AboutView.as_view(), name='about'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
+    path('updates/', AppUpdateView.as_view(), name='app_update_direct'),
+    path('updates/run/', run_app_update, name='run_app_update_direct'),
     path('settings/', include('core.urls')),
     path('companies/', include('companies.urls')),
     path('documents/', include('documents.urls')),
     path('tenders/', include('tenders.urls')),
     path('bids/', include('bid_generator.urls')),
+    path('council-opportunities/', include('council_opportunities.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

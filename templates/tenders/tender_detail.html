@@ -1,65 +1,512 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3"><h1 class="h3">{{ object.title }}</h1><div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{% url 'tenders:analyze_placeholder' object.pk %}">Run placeholder AI</a><a class="btn btn-outline-success" href="{% url 'tenders:match' object.pk %}">Match companies</a><a class="btn btn-outline-primary" href="{% url 'tenders:update' object.pk %}">Edit</a></div></div>
-<div class="row g-4">
-  <div class="col-lg-6"><div class="card card-body"><p><strong>Number:</strong> {{ object.tender_number|default:"-" }}</p><p><strong>ZPPA Resource ID:</strong> {{ object.zppa_resource_id|default:"-" }}</p><p><strong>Entity:</strong> {{ object.procuring_entity }}</p><p><strong>Description:</strong> {{ object.description|default:"-" }}</p><p><strong>Source:</strong> {{ object.get_source_display }}</p><p><strong>Published:</strong> {{ object.published_at|date:"d/m/Y H:i:s"|default:"-" }}</p><p><strong>Closing:</strong> {{ object.closing_at|date:"d/m/Y H:i:s"|default:object.closing_date|default:"-" }}</p><p><strong>Method:</strong> {{ object.procurement_method|default:"-" }}</p><p><strong>Submission:</strong> {{ object.submission_method|default:"-" }}</p><p><strong>Bid security:</strong> {{ object.bid_security_amount|default:"-" }}</p><p><strong>Site visit:</strong> {{ object.site_visit_date|default:"-" }}</p>{% if object.imported_reference %}<p><a href="{{ object.imported_reference }}" target="_blank" rel="noopener">Open ZPPA page</a></p>{% endif %}{% if object.tender_document %}<a class="btn btn-primary" href="{{ object.tender_document.url }}">Download tender document</a>{% endif %}</div></div>
-  <div class="col-lg-6"><h2 class="h5">Requirements</h2><div class="list-group">{% for req in object.requirements.all %}<div class="list-group-item"><strong>{{ req.get_requirement_type_display }}</strong><br>{{ req.description }}</div>{% empty %}<div class="list-group-item text-muted">No requirements yet.</div>{% endfor %}</div><a class="btn btn-sm btn-outline-primary mt-3" href="{% url 'tenders:tender_requirement_create' object.pk %}">Add requirement</a></div>
-</div>
-<div class="card card-body mt-4">
-  <h2 class="h5">Solicitation document analysis</h2>
-  <form method="post" enctype="multipart/form-data" action="{% url 'tenders:upload_solicitation' object.pk %}" class="d-flex gap-2 align-items-end flex-wrap">
-    {% csrf_token %}
-    <div class="flex-grow-1">{{ solicitation_form.file.label_tag }}{{ solicitation_form.file }}</div>
-    <button class="btn btn-primary" type="submit">Upload solicitation document</button>
-  </form>
-  <div class="list-group mt-3">
-    {% for document in object.solicitation_documents.all %}
-      <div class="list-group-item">
-        <strong>{{ document.file.name }}</strong> uploaded {{ document.uploaded_at|date:"d/m/Y H:i" }}<br>
-        Required docs: {{ document.analysis_summary.required_documents|join:", "|default:"None found" }}
-      </div>
-    {% empty %}
-      <div class="list-group-item text-muted">No solicitation document uploaded yet.</div>
-    {% endfor %}
-  </div>
-</div>
-<div class="card card-body mt-4">
-  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-    <div>
-      <h2 class="h5 mb-1">TenderAI document chat</h2>
-      <p class="text-muted mb-0">Ask questions after uploading a solicitation document. The answer is based on the extracted document text.</p>
+<div class="tender-workspace-header mb-4">
+  <div>
+    <div class="eyebrow">Tender decision workspace</div>
+    <h1 class="h3 mb-2">{{ object.title }}</h1>
+    <div class="tender-meta">
+      <span>{{ object.procuring_entity }}</span>
+      {% if object.procurement_method %}<span>{{ object.procurement_method }}</span>{% endif %}
+      <span class="badge text-bg-{{ object.urgency_class }}">{{ object.urgency_label }}</span>
+      <span class="badge text-bg-light border">{{ object.get_status_display }}</span>
     </div>
   </div>
-  <form method="post" action="{% url 'tenders:ask_chatbot' object.pk %}" class="mt-3">
-    {% csrf_token %}
-    {{ chat_form.question.label_tag }}
-    {{ chat_form.question }}
-    <button class="btn btn-primary mt-2" type="submit">Ask TenderAI</button>
-  </form>
-  <div class="chat-thread mt-4">
-    {% for message in chat_messages %}
-      <div class="chat-message">
-        <div class="chat-question"><strong>You asked:</strong> {{ message.question }}</div>
-        <div class="chat-answer"><strong>TenderAI:</strong><br>{{ message.answer|linebreaksbr }}</div>
-        <div class="text-muted small mt-2">{{ message.created_at|date:"d/m/Y H:i" }}{% if message.solicitation_document %} based on {{ message.solicitation_document.file.name }}{% endif %}</div>
-      </div>
-    {% empty %}
-      <div class="text-muted">No chat questions yet. Try asking: "What documents are required and what should I do next?"</div>
-    {% endfor %}
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-primary" href="#ai-pane" data-open-tab="#ai-pane">Upload solicitation / Ask AI</a>
+    <a class="btn btn-outline-secondary" href="{% url 'tenders:analyze_placeholder' object.pk %}">Run analysis</a>
+    <a class="btn btn-outline-success" href="{% url 'tenders:match' object.pk %}">Should we bid?</a>
+    <a class="btn btn-outline-primary" href="{% url 'tenders:tasks' object.pk %}">Bid tasks</a>
+    <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#bidPackCompanyModal">Generate bid documents</button>
+    {% if object.imported_reference %}<a class="btn btn-outline-secondary" href="{{ object.imported_reference }}" target="_blank" rel="noopener">Open ZPPA</a>{% endif %}
+    <a class="btn btn-primary" href="{% url 'tenders:update' object.pk %}">Edit</a>
   </div>
 </div>
-{% if object.zppa_details %}
-<div class="card card-body mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="h5 mb-0">ZPPA tender details</h2>
-    {% if object.imported_reference %}<a class="btn btn-sm btn-outline-primary" href="{{ object.imported_reference }}" target="_blank" rel="noopener">View on ZPPA</a>{% endif %}
+
+<div class="modal fade" id="bidPackCompanyModal" tabindex="-1" aria-labelledby="bidPackCompanyModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" action="{% url 'bid_generator:create_from_tender' object.pk %}" class="modal-content">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="bidPackCompanyModalLabel">Choose company for bid documents</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% if object.itb_11_items %}
+          <p class="text-muted">TenderAI will create one PDF document for each XML requirement, using this company's details and uploaded certificates where they match.</p>
+        {% else %}
+          <div class="alert alert-warning">No XML structure is saved yet. Fetch or upload the Tender Structure XML first for best results.</div>
+        {% endif %}
+        <label class="form-label" for="bid-company">Company</label>
+        <select class="form-select" id="bid-company" name="company" required>
+          <option value="">Select company</option>
+          {% for company in bid_company_options %}
+            <option value="{{ company.pk }}">{{ company.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Create bid documents</button>
+      </div>
+    </form>
   </div>
-  <dl class="zppa-detail-grid mb-0">
-    {% for row in object.zppa_details %}
-      <dt>{{ row.label }}:</dt>
-      <dd>{% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noopener">{{ row.value }}</a>{% else %}{{ row.value }}{% endif %}</dd>
-    {% endfor %}
-  </dl>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-4">
+    <div class="decision-card decision-{{ best_decision.tone|default:'secondary' }} h-100">
+      <div class="text-muted small">Recommended decision</div>
+      {% if best_decision %}
+        <div class="decision-title">{{ best_decision.recommendation }}</div>
+        <div class="fw-semibold">{{ best_decision.match.company.name }} - {{ best_decision.match.score }}%</div>
+        <p class="mb-0 mt-2">{{ best_decision.next_step }}</p>
+      {% else %}
+        <div class="decision-title">Match companies first</div>
+        <p class="mb-0">Add companies and documents, then run matching.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="section-panel h-100">
+      <h2 class="h5">Bid checklist signals</h2>
+      <div class="signal-grid">
+        <div><span class="signal-label">Closing</span><strong>{{ object.closing_at|date:"d/m/Y H:i"|default:object.closing_date|default:"-" }}</strong></div>
+        <div><span class="signal-label">Bid security</span><strong>{% if tender_signals.bid_security or object.bid_security_amount %}Check required{% else %}Not detected{% endif %}</strong></div>
+        <div><span class="signal-label">Site visit</span><strong>{% if tender_signals.site_visit or object.site_visit_date %}Check required{% else %}Not detected{% endif %}</strong></div>
+        <div><span class="signal-label">Fee</span><strong>{{ object.participation_fee|default:"-" }}</strong></div>
+      </div>
+      <div class="mt-3">
+        <span class="signal-label">Required documents detected</span>
+        {% for label in required_document_labels %}
+          <span class="badge text-bg-light border me-1 mb-1">{{ label }}</span>
+        {% empty %}
+          <span class="text-muted">Upload or analyze the solicitation document to detect requirements.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if xml_evidence_summary.typed %}
+<div class="section-panel mb-4">
+  <div class="section-heading">
+    <div>
+      <h2 class="h5 mb-1">XML evidence checklist</h2>
+      <p class="text-muted mb-0">
+        TenderAI found {{ xml_evidence_summary.typed|length }} document type{{ xml_evidence_summary.typed|length|pluralize }} required by the XML.
+        {% if best_company_for_uploads %}Checking against {{ best_company_for_uploads.name }}.{% endif %}
+      </p>
+    </div>
+    {% if best_company_for_uploads %}
+      <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#bidPackCompanyModal">Generate with this tender</button>
+    {% endif %}
+  </div>
+  {% if best_company_document_gaps %}
+    <div class="evidence-gap-grid">
+      {% for row in best_company_document_gaps %}
+        <div class="evidence-gap-card evidence-gap-{{ row.badge }}">
+          <div class="d-flex justify-content-between gap-2 align-items-start">
+            <div>
+              <strong>{{ row.label }}</strong>
+              <div class="small text-muted">{{ row.count }} XML mention{{ row.count|pluralize }}</div>
+            </div>
+            <span class="badge text-bg-{{ row.badge }}">{{ row.status }}</span>
+          </div>
+          {% if row.examples %}
+            <ul class="evidence-example-list">
+              {% for example in row.examples %}
+                <li>{{ example }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          <div class="mt-3 d-flex gap-2 flex-wrap">
+            {% if row.document %}
+              <a class="btn btn-sm btn-outline-primary" href="{{ row.document.get_absolute_url }}">View document</a>
+            {% else %}
+              <a class="btn btn-sm btn-primary" href="{% url 'documents:create' %}?company={{ best_company_for_uploads.pk }}&document_type={{ row.document_type }}&next={{ request.get_full_path|urlencode }}">Upload</a>
+            {% endif %}
+            {% if row.status == 'Expired' %}
+              <a class="btn btn-sm btn-warning" href="{% url 'documents:create' %}?company={{ best_company_for_uploads.pk }}&document_type={{ row.document_type }}&next={{ request.get_full_path|urlencode }}">Upload current copy</a>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">Choose a company or run matching to check the XML requirements against uploaded documents.</div>
+  {% endif %}
+  {% if xml_evidence_summary.manual_items %}
+    <div class="alert alert-info mt-3 mb-0">
+      <strong>{{ xml_evidence_summary.manual_count }} attachment item{{ xml_evidence_summary.manual_count|pluralize }} still need manual review.</strong>
+      TenderAI could not confidently map these to one document type, so check them in the original solicitation before submission.
+    </div>
+  {% endif %}
 </div>
 {% endif %}
+
+<ul class="nav tender-tabs mb-3" id="tenderWorkspaceTabs" role="tablist">
+  <li class="nav-item" role="presentation"><button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary-pane" type="button" role="tab">Summary</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" id="requirements-tab" data-bs-toggle="tab" data-bs-target="#requirements-pane" type="button" role="tab">Requirements <span>{{ object.requirements.count }}</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" id="matching-tab" data-bs-toggle="tab" data-bs-target="#matching-pane" type="button" role="tab">Company Match</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-pane" type="button" role="tab">Bid Tasks <span>{{ bid_task_progress.percent }}%</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" id="ai-tab" data-bs-toggle="tab" data-bs-target="#ai-pane" type="button" role="tab">TenderAI</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" id="zppa-tab" data-bs-toggle="tab" data-bs-target="#zppa-pane" type="button" role="tab">ZPPA Details</button></li>
+</ul>
+
+<div class="tab-content">
+  <section class="tab-pane fade show active" id="summary-pane" role="tabpanel" aria-labelledby="summary-tab">
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="section-panel h-100">
+          <h2 class="h5">Tender summary</h2>
+          <dl class="detail-list">
+            <dt>Number</dt><dd>{{ object.tender_number|default:"-" }}</dd>
+            <dt>ZPPA Resource ID</dt><dd>{{ object.zppa_resource_id|default:"-" }}</dd>
+            <dt>Entity</dt><dd>{{ object.procuring_entity }}</dd>
+            <dt>Source</dt><dd>{{ object.get_source_display }}</dd>
+            <dt>Published</dt><dd>{{ object.published_at|date:"d/m/Y H:i:s"|default:"-" }}</dd>
+            <dt>Closing</dt><dd>{{ object.closing_at|date:"d/m/Y H:i:s"|default:object.closing_date|default:"-" }}</dd>
+            <dt>Method</dt><dd>{{ object.procurement_method|default:"-" }}</dd>
+            <dt>Submission</dt><dd>{{ object.submission_method|default:"-" }}</dd>
+          </dl>
+          {% if object.tender_document %}<a class="btn btn-primary" href="{{ object.tender_document.url }}">Download tender document</a>{% endif %}
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="section-panel h-100">
+          <h2 class="h5">Description</h2>
+          <p class="mb-0">{{ object.description|default:"No description captured yet."|linebreaksbr }}</p>
+        </div>
+      </div>
+    </div>
+    {% if object.clarification_address or object.submission_address or object.itb_11_items %}
+      <div class="section-panel mt-4">
+        <div class="section-heading">
+          <div>
+            <h2 class="h5 mb-1">AI extracted bid instructions</h2>
+            <p class="text-muted mb-0">Captured from the uploaded solicitation document. Confirm against the original before submission.</p>
+          </div>
+          <a class="btn btn-sm btn-outline-primary" href="#ai-pane" data-open-tab="#ai-pane">Ask AI</a>
+        </div>
+        <div class="row g-3">
+          {% if object.clarification_address %}
+            <div class="col-lg-6">
+              <div class="ai-doc-card h-100">
+                <strong>Clarification address</strong>
+                <div class="mt-2 small">{{ object.clarification_address|linebreaksbr }}</div>
+              </div>
+            </div>
+          {% endif %}
+          {% if object.submission_address %}
+            <div class="col-lg-6">
+              <div class="ai-doc-card h-100">
+                <strong>Submission address</strong>
+                <div class="mt-2 small">{{ object.submission_address|linebreaksbr }}</div>
+              </div>
+            </div>
+          {% endif %}
+          {% if object.itb_11_items %}
+            <div class="col-12">
+              <div class="xml-requirement-board">
+                {% regroup object.itb_11_items by envelope as envelope_groups %}
+                {% for group in envelope_groups %}
+                  <section class="xml-envelope-card">
+                    <div class="xml-envelope-header">
+                      <div>
+                        <span class="eyebrow">Envelope</span>
+                        <h3 class="h5 mb-0">{{ group.grouper|default:"Bid requirements" }}</h3>
+                      </div>
+                      <span class="badge text-bg-light border">{{ group.list|length }} item{{ group.list|length|pluralize }}</span>
+                    </div>
+                    <div class="xml-requirement-list">
+                      {% for item in group.list %}
+                        <article class="xml-requirement-item">
+                          <div class="xml-requirement-number">{{ item.order|default:forloop.counter }}</div>
+                          <div class="xml-requirement-main">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                              <strong>{{ item.requirement|default:item.title }}</strong>
+                              {% if item.mandatory %}
+                                <span class="badge text-bg-danger">Mandatory</span>
+                              {% endif %}
+                              <span class="badge text-bg-light border">{{ item.reference|default:"ITB 11.1" }}</span>
+                            </div>
+                            {% if item.response %}
+                              <div class="xml-response">
+                                <span>Expected response</span>
+                                {% if item.response_items %}
+                                  <ul class="xml-response-list">
+                                    {% for response_item in item.response_items %}
+                                      <li>{{ response_item }}</li>
+                                    {% endfor %}
+                                  </ul>
+                                {% else %}
+                                  <strong>{{ item.response }}</strong>
+                                {% endif %}
+                              </div>
+                            {% elif item.title and not item.requirement %}
+                              <div>{{ item.title }}</div>
+                            {% endif %}
+                          </div>
+                        </article>
+                      {% endfor %}
+                    </div>
+                  </section>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="tab-pane fade" id="requirements-pane" role="tabpanel" aria-labelledby="requirements-tab">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">Requirement list</h2>
+          <p class="text-muted mb-0">Keep this ordered the same way the solicitation document lists the requirements.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:tender_requirement_create' object.pk %}">Add requirement</a>
+      </div>
+      <div class="requirement-timeline">
+        {% for req in object.requirements.all %}
+          <div class="requirement-item">
+            <div class="requirement-number">{{ forloop.counter }}</div>
+            <div>
+              <div class="d-flex gap-2 flex-wrap align-items-center mb-1">
+                <strong>{{ req.get_requirement_type_display }}</strong>
+                {% if req.is_mandatory %}<span class="badge text-bg-danger">Mandatory</span>{% else %}<span class="badge text-bg-secondary">Optional</span>{% endif %}
+              </div>
+              <div>{{ req.description }}</div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty-state">No requirements yet. Upload a solicitation document or run analysis.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-pane fade" id="matching-pane" role="tabpanel" aria-labelledby="matching-tab">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">Top company decisions</h2>
+          <p class="text-muted mb-0">Use the best company unless missing or expired documents make another company safer.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-success" href="{% url 'tenders:match' object.pk %}">Full match view</a>
+      </div>
+      <div class="match-card-grid">
+        {% for decision in top_decisions %}
+          <div class="match-card">
+            <div class="d-flex justify-content-between gap-3">
+              <div>
+                <h3 class="h6 mb-1"><a href="{{ decision.match.company.get_absolute_url }}">{{ decision.match.company.name }}</a></h3>
+                <strong>{{ decision.recommendation }}</strong>
+              </div>
+              <span class="score-badge score-{{ decision.tone }}">{{ decision.match.score }}%</span>
+            </div>
+            <div class="mt-3">
+              {% if decision.missing %}<div class="small"><strong>Missing:</strong> {{ decision.missing|join:", " }}</div>{% endif %}
+              {% if decision.expired %}<div class="small"><strong>Expired:</strong> {{ decision.expired|join:", " }}</div>{% endif %}
+              {% if not decision.missing and not decision.expired %}<div class="small text-muted">No required document gaps detected.</div>{% endif %}
+            </div>
+            <div class="recommended-action mt-3">{{ decision.next_step }}</div>
+            <a class="btn btn-sm btn-primary mt-3" href="{% url 'bid_generator:create' %}?tender={{ object.pk }}&company={{ decision.match.company.pk }}">Create bid pack</a>
+          </div>
+        {% empty %}
+          <div class="empty-state">No companies matched yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-pane fade" id="tasks-pane" role="tabpanel" aria-labelledby="tasks-tab">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">Bid task tracker</h2>
+          <p class="text-muted mb-0">{{ bid_task_progress.done }} of {{ bid_task_progress.total }} task(s) complete.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:tasks' object.pk %}">Open full tracker</a>
+      </div>
+      <div class="progress readiness-progress mb-3">
+        <div class="progress-bar" style="width: {{ bid_task_progress.percent }}%"></div>
+      </div>
+      <div class="bid-task-list compact">
+        {% for task in bid_task_progress.tasks|slice:":6" %}
+          <div class="bid-task-card task-{{ task.status|lower }}">
+            <div>
+              <span class="badge text-bg-{{ task.status_class }}">{{ task.get_status_display }}</span>
+              <strong class="ms-2">{{ task.title }}</strong>
+            </div>
+            <span class="badge text-bg-{{ task.priority_class }}">{{ task.get_priority_display }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-pane fade" id="ai-pane" role="tabpanel" aria-labelledby="ai-tab">
+    <div class="ai-workspace">
+      <div class="ai-document-panel">
+        <div class="section-panel h-100 ai-panel">
+          <div class="ai-panel-header">
+            <div>
+              <span class="eyebrow">Step 1</span>
+              <h2 class="h5 mb-1">Solicitation document analysis</h2>
+              <p class="text-muted small mb-0">Upload a PDF/DOCX or fetch a public ZPPA document, then ask TenderAI questions.</p>
+            </div>
+            {% if object.zppa_resource_id or object.imported_reference %}
+              <div class="d-flex flex-wrap gap-2">
+                <form method="post" action="{% url 'tenders:fetch_zppa_documents' object.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-success" type="submit">Fetch ZPPA documents + XML</button>
+                </form>
+                <form method="post" action="{% url 'tenders:fetch_zppa_solicitation' object.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Fetch one document</button>
+                </form>
+              </div>
+            {% endif %}
+          </div>
+          <form method="post" enctype="multipart/form-data" action="{% url 'tenders:upload_solicitation' object.pk %}" class="ai-upload-box">
+            {% csrf_token %}
+            <label class="form-label mb-1" for="{{ solicitation_form.file.id_for_label }}">Solicitation file</label>
+            {{ solicitation_form.file }}
+            <div class="text-muted small">Supported: PDF, DOCX, XML, and text files.</div>
+            <button class="btn btn-primary" type="submit">Upload solicitation document</button>
+          </form>
+          <div class="ai-doc-list mt-3">
+            {% for document in object.solicitation_documents.all %}
+              <div class="ai-doc-card">
+                <div class="d-flex justify-content-between gap-2 align-items-start">
+                  <strong>Document {{ forloop.counter }}</strong>
+                  <span class="badge text-bg-success">Analyzed</span>
+                </div>
+                <div class="text-muted small text-break">{{ document.file.name }}</div>
+                <div class="text-muted small">Uploaded {{ document.uploaded_at|date:"d/m/Y H:i" }}</div>
+                <div class="small mt-2">
+                  <span class="fw-semibold">Required docs:</span>
+                  {{ document.analysis_summary.required_documents|join:", "|default:"None found yet" }}
+                </div>
+              </div>
+            {% empty %}
+              <div class="empty-state">No solicitation document uploaded yet. Upload first so the chat can answer from the tender document.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="ai-chat-panel">
+        <div class="section-panel h-100 ai-panel">
+          <div class="ai-panel-header">
+            <div>
+              <span class="eyebrow">Step 2</span>
+              <h2 class="h5 mb-1">TenderAI document chat</h2>
+              <p class="text-muted small mb-0">Ask about what to prepare, where to submit, ITB 11.1, forms, dates, and risks.</p>
+            </div>
+          </div>
+          <form method="post" action="{% url 'tenders:ask_chatbot' object.pk %}" class="ai-chat-form" data-loading-form data-loading-text="Reading document...">
+            {% csrf_token %}
+            <label class="form-label" for="{{ chat_form.question.id_for_label }}">Your question</label>
+            {{ chat_form.question }}
+            <div class="quick-question-bar mt-2">
+              <button class="btn btn-sm btn-outline-primary" type="button" data-question="What documents are required and what should I do next?">Required documents</button>
+              <button class="btn btn-sm btn-outline-primary" type="button" data-question="What can disqualify us from this tender?">Disqualification risks</button>
+              <button class="btn btn-sm btn-outline-primary" type="button" data-question="What dates and deadlines should I watch?">Dates</button>
+              <button class="btn btn-sm btn-outline-primary" type="button" data-question="What forms and declarations are required?">Forms</button>
+              <button class="btn btn-sm btn-outline-primary" type="button" data-question="What is the clarification or submission address in the ITB?">Address</button>
+              <button class="btn btn-sm btn-outline-primary" type="button" data-question="Explain the ITB 11.1 document structure in order.">ITB 11.1</button>
+              <button class="btn btn-sm btn-outline-primary" type="button" data-question="From the XML, what files, attachments, and technical responses must I prepare?">XML checklist</button>
+            </div>
+            <button class="btn btn-primary mt-3" type="submit" data-loading-button>Ask TenderAI</button>
+          </form>
+          <div class="chat-thread mt-4">
+            {% for message in chat_messages %}
+              <div class="chat-message">
+                <div class="chat-bubble chat-bubble-user">
+                  <span>You</span>
+                  <div>{{ message.question }}</div>
+                </div>
+                <div class="chat-bubble chat-bubble-ai">
+                  <span>TenderAI</span>
+                  <div>{{ message.answer|linebreaksbr }}</div>
+                </div>
+                <div class="chat-source">{{ message.created_at|date:"d/m/Y H:i" }}{% if message.solicitation_document %} - based on {{ message.solicitation_document.file.name }}{% endif %}</div>
+              </div>
+            {% empty %}
+              <div class="empty-state">
+                <strong>No chat questions yet.</strong>
+                <div class="mt-1">Upload a solicitation document, then try: "What documents are required and what should I do next?"</div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-pane fade" id="zppa-pane" role="tabpanel" aria-labelledby="zppa-tab">
+    <div class="section-panel">
+      <div class="section-heading">
+        <h2 class="h5 mb-0">ZPPA tender details</h2>
+        {% if object.imported_reference %}<a class="btn btn-sm btn-outline-primary" href="{{ object.imported_reference }}" target="_blank" rel="noopener">View on ZPPA</a>{% endif %}
+      </div>
+      {% if object.zppa_details %}
+        <dl class="zppa-detail-grid mb-0">
+          {% for row in object.zppa_details %}
+            <dt>{{ row.label }}:</dt>
+            <dd>{% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noopener">{{ row.value }}</a>{% else %}{{ row.value }}{% endif %}</dd>
+          {% endfor %}
+        </dl>
+      {% else %}
+        <div class="empty-state">No ZPPA detail table has been captured for this tender yet.</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<script>
+  document.querySelectorAll('[data-question]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const field = document.querySelector('#id_question');
+      if (field) {
+        field.value = button.dataset.question;
+        field.focus();
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-loading-form]').forEach((form) => {
+    form.addEventListener('submit', () => {
+      const button = form.querySelector('[data-loading-button]');
+      if (button) {
+        button.disabled = true;
+        button.textContent = form.dataset.loadingText || 'Working...';
+      }
+    });
+  });
+
+  function openTenderTab(selector) {
+    const trigger = document.querySelector(`[data-bs-target="${selector}"]`);
+    if (trigger && window.bootstrap) {
+      window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+      trigger.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  document.querySelectorAll('[data-open-tab]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      const selector = button.dataset.openTab;
+      history.replaceState(null, '', selector);
+      openTenderTab(selector);
+    });
+  });
+
+  if (window.location.hash === '#ai-pane') {
+    openTenderTab('#ai-pane');
+  }
+</script>
 {% endblock %}

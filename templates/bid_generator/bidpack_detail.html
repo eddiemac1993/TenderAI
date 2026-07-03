@@ -1,14 +1,358 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="h3 mb-3">Bid pack</h1>
-<div class="card card-body">
-  <p><strong>Tender:</strong> {{ object.tender }}</p><p><strong>Company:</strong> {{ object.company }}</p>
-  <p><a class="btn btn-primary" href="{% url 'bid_generator:generate' object.pk %}">Generate DOCX/PDF</a>
-  {% if object.generated_docx %}<a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'docx' %}">Download DOCX</a>{% endif %}
-  {% if object.generated_pdf %}<a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}?inline=1" target="_blank" rel="noopener">View PDF</a>
-  <a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}">Download PDF</a>{% endif %}</p>
-  <h2 class="h5">Bid checklist</h2>
-  <ul>{% for item in checklist %}<li>{{ item }}</li>{% endfor %}</ul>
-  <p class="text-muted">DOCX and PDF generation hooks are ready for python-docx and ReportLab/WeasyPrint integration.</p>
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+  <div>
+    <p class="eyebrow mb-1">Bid pack review</p>
+    <h1 class="h3 mb-1">{{ object.company }}</h1>
+    <p class="text-muted mb-0">{{ object.tender }}</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{{ object.tender.get_absolute_url }}">Tender</a>
+    <a class="btn btn-primary" href="{% url 'bid_generator:generate' object.pk %}">Generate DOCX/PDF</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  {% if regeneration_status.needed %}
+  <div class="col-12">
+    <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mb-0">
+      <div>
+        <strong>Regenerate bid pack before submission.</strong>
+        <div>{{ regeneration_status.reason }}{% if regeneration_status.latest_change %} Latest change: {{ regeneration_status.latest_change|date:"d/m/Y H:i" }}.{% endif %}</div>
+      </div>
+      <a class="btn btn-warning" href="{% url 'bid_generator:generate' object.pk %}">Regenerate now</a>
+    </div>
+  </div>
+  {% endif %}
+  <div class="col-lg-4">
+    <div class="decision-card decision-{{ decision.tone|default:'secondary' }} h-100">
+      <div class="text-muted small">Bid readiness</div>
+      {% if decision %}
+        <div class="decision-title">{{ decision.recommendation }}</div>
+        <p class="mb-0">{{ decision.next_step }}</p>
+      {% else %}
+        <div class="decision-title">Match not run</div>
+        <p class="mb-0">Run company matching on the tender page for a better readiness decision.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="section-panel h-100">
+      <h2 class="h5">Company readiness</h2>
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted">{{ readiness.ready_count }} of {{ readiness.total_count }} documents ready</span>
+        <span class="score-badge score-{% if readiness.score >= 80 %}success{% elif readiness.score >= 50 %}warning{% else %}danger{% endif %}">{{ readiness.score }}%</span>
+      </div>
+      <div class="progress readiness-progress mt-3"><div class="progress-bar" style="width: {{ readiness.score }}%"></div></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="section-panel h-100">
+      <h2 class="h5">Downloads</h2>
+      <p class="text-muted small mb-2">Generated: {{ object.generated_at|date:"d/m/Y H:i"|default:"Not generated yet" }}</p>
+      <div class="d-grid gap-2">
+        {% if object.generated_pdf %}
+          <a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}?inline=1" target="_blank" rel="noopener">View PDF</a>
+          <a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'pdf' %}">Download PDF</a>
+        {% else %}
+          <button class="btn btn-outline-secondary" type="button" disabled>PDF not generated</button>
+        {% endif %}
+        {% if object.generated_docx %}
+          <a class="btn btn-outline-primary" href="{% url 'bid_generator:download' object.pk 'docx' %}">Download DOCX</a>
+        {% else %}
+          <button class="btn btn-outline-secondary" type="button" disabled>DOCX not generated</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% if submission_gap_items %}
+  <div class="col-12">
+    <div class="section-panel border border-warning">
+      <h2 class="h5">Submission gaps to fix</h2>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Status</th>
+              <th>Recommended action</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for gap in submission_gap_items %}
+              <tr>
+                <td class="fw-semibold">{{ gap.label }}</td>
+                <td><span class="badge text-bg-warning">{{ gap.status }}</span></td>
+                <td>{{ gap.action }}</td>
+                <td class="text-end">
+                  {% if gap.document_type %}
+                    <a class="btn btn-sm btn-primary" href="{% url 'documents:create' %}?company={{ object.company.pk }}&document_type={{ gap.document_type }}&next={{ request.get_full_path|urlencode }}">Upload</a>
+                  {% else %}
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'companies:update' object.company.pk %}">Edit company</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if xml_document_gaps %}
+  <div class="col-12">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">XML evidence readiness</h2>
+          <p class="text-muted mb-0">These are the document types TenderAI detected from the XML and checked against {{ object.company.name }}.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:generate_documents' object.pk %}">Regenerate XML documents</a>
+      </div>
+      <div class="evidence-gap-grid">
+        {% for row in xml_document_gaps %}
+          <div class="evidence-gap-card evidence-gap-{{ row.badge }}">
+            <div class="d-flex justify-content-between gap-2 align-items-start">
+              <div>
+                <strong>{{ row.label }}</strong>
+                <div class="small text-muted">{{ row.count }} XML mention{{ row.count|pluralize }}</div>
+              </div>
+              <span class="badge text-bg-{{ row.badge }}">{{ row.status }}</span>
+            </div>
+            {% if row.examples %}
+              <ul class="evidence-example-list">
+                {% for example in row.examples %}
+                  <li>{{ example }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            <div class="mt-3">
+              {% if row.document %}
+                <a class="btn btn-sm btn-outline-primary" href="{{ row.document.get_absolute_url }}">View document</a>
+              {% else %}
+                <a class="btn btn-sm btn-primary" href="{% url 'documents:create' %}?company={{ object.company.pk }}&document_type={{ row.document_type }}&next={{ request.get_full_path|urlencode }}">Upload</a>
+              {% endif %}
+              {% if row.status == 'Expired' %}
+                <a class="btn btn-sm btn-warning" href="{% url 'documents:create' %}?company={{ object.company.pk }}&document_type={{ row.document_type }}&next={{ request.get_full_path|urlencode }}">Upload current copy</a>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if xml_bid_structure_groups %}
+  <div class="col-12">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">XML bid pack structure</h2>
+          <p class="text-muted mb-0">The generated DOCX/PDF will follow these ZPPA XML envelopes after the cover page and table of contents.</p>
+        </div>
+      </div>
+      <div class="xml-requirement-board">
+        {% for group in xml_bid_structure_groups %}
+          <section class="xml-envelope-card">
+            <div class="xml-envelope-header">
+              <div>
+                <span class="eyebrow">Envelope</span>
+                <h3 class="h5 mb-0">{{ group.title }}</h3>
+              </div>
+              <span class="badge text-bg-light border">{{ group.items|length }} item{{ group.items|length|pluralize }}</span>
+            </div>
+            <div class="xml-requirement-list">
+              {% for item in group.items %}
+                <article class="xml-requirement-item">
+                  <div class="xml-requirement-number">{{ item.order|default:forloop.counter }}</div>
+                  <div class="xml-requirement-main">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                      <strong>{{ item.requirement|default:item.title }}</strong>
+                      {% if item.mandatory %}<span class="badge text-bg-danger">Mandatory</span>{% endif %}
+                      <span class="badge text-bg-light border">{{ item.reference|default:"XML" }}</span>
+                    </div>
+                    {% if item.response %}
+                      <div class="xml-response">
+                        <span>Expected response</span>
+                        {% if item.response_items %}
+                          <ul class="xml-response-list">
+                            {% for response_item in item.response_items %}
+                              <li>{{ response_item }}</li>
+                            {% endfor %}
+                          </ul>
+                        {% else %}
+                          <strong>{{ item.response }}</strong>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          </section>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if bid_documents %}
+  <div class="col-12">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">Generated XML bid documents</h2>
+          <p class="text-muted mb-0">Download each generated document separately, or combine them into one PDF.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:generate_documents' object.pk %}">Regenerate documents</a>
+          <a class="btn btn-sm btn-primary" href="{% url 'bid_generator:download_combined_documents' object.pk %}?inline=1" target="_blank" rel="noopener">View combined PDF</a>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download_combined_documents' object.pk %}">Download combined</a>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Envelope</th>
+              <th>Requirement</th>
+              <th>Matched company document</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for document in bid_documents %}
+              <tr>
+                <td>{{ document.order }}</td>
+                <td>{{ document.envelope|default:"-" }}</td>
+                <td>
+                  <strong>{{ document.requirement }}</strong>
+                  {% if document.expected_response_lines %}
+                    <ul class="xml-response-list text-muted small">
+                      {% for line in document.expected_response_lines %}
+                        <li>{{ line }}</li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if document.matched_company_document %}
+                    {{ document.matched_company_document.get_document_type_display }} - {{ document.matched_company_document.title }}
+                  {% else %}
+                    <span class="badge text-bg-warning">Manual response needed</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}?inline=1" target="_blank" rel="noopener">View</a>
+                  <a class="btn btn-sm btn-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}">Download</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% elif xml_bid_structure_groups %}
+  <div class="col-12">
+    <div class="section-panel">
+      <div class="section-heading">
+        <div>
+          <h2 class="h5 mb-1">XML bid documents</h2>
+          <p class="text-muted mb-0">Generate one PDF per XML requirement using this company's data and certificates.</p>
+        </div>
+        <a class="btn btn-primary" href="{% url 'bid_generator:generate_documents' object.pk %}">Generate bid documents</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if ordered_itb_rows %}
+  <div class="col-12">
+    <div class="section-panel">
+      <h2 class="h5">ITB ordered bid checklist</h2>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ITB Ref</th>
+              <th>Required item</th>
+              <th>TenderAI output</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reference, required_item, output, status in ordered_itb_rows %}
+              <tr>
+                <td class="fw-semibold">{{ reference }}</td>
+                <td>{{ required_item }}</td>
+                <td>{{ output }}</td>
+                <td><span class="badge text-bg-light border">{{ status }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="col-lg-7">
+    <div class="section-panel">
+      <h2 class="h5">Bid checklist</h2>
+      <div class="requirement-timeline">
+        {% for item in checklist %}
+          <div class="requirement-item">
+            <div class="requirement-number">{{ forloop.counter }}</div>
+            <div>{{ item }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="section-panel">
+      <h2 class="h5">Included sections</h2>
+      <div class="readiness-list">
+        <div class="readiness-row"><strong>Cover letter</strong><span class="badge text-bg-{% if object.include_cover_letter %}success{% else %}secondary{% endif %}">{{ object.include_cover_letter|yesno:"Included,Skipped" }}</span></div>
+        <div class="readiness-row"><strong>Bid checklist</strong><span class="badge text-bg-{% if object.include_checklist %}success{% else %}secondary{% endif %}">{{ object.include_checklist|yesno:"Included,Skipped" }}</span></div>
+        <div class="readiness-row"><strong>Company profile</strong><span class="badge text-bg-{% if object.include_company_profile %}success{% else %}secondary{% endif %}">{{ object.include_company_profile|yesno:"Included,Skipped" }}</span></div>
+        <div class="readiness-row"><strong>Price schedule</strong><span class="badge text-bg-{% if object.include_price_schedule %}success{% else %}secondary{% endif %}">{{ object.include_price_schedule|yesno:"Included,Skipped" }}</span></div>
+      </div>
+    </div>
+  </div>
+  {% if ordered_attachments %}
+  <div class="col-12">
+    <div class="section-panel">
+      <h2 class="h5">Certificate attachment order</h2>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Document</th>
+              <th>Title</th>
+              <th>Expiry</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for document in ordered_attachments %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td class="fw-semibold">{{ document.get_document_type_display }}</td>
+                <td>{{ document.title }}</td>
+                <td>{{ document.expiry_date|default:"-" }}</td>
+                <td><span class="badge text-bg-{{ document.status_class }}">{{ document.status_label }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

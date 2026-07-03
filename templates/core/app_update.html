@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Update TenderAI{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">Local app update</div>
+    <h1 class="h3 mb-1">Update TenderAI</h1>
+    <p class="text-muted mb-0">Pull new features from GitHub without replacing this PC's database, uploaded documents, or private settings.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'dashboard' %}">Back</a>
+</div>
+
+<div class="section-panel mb-3">
+  <div class="signal-grid">
+    <div>
+      <span class="signal-label">Branch</span>
+      <strong>{{ update_status.branch|default:"-" }}</strong>
+    </div>
+    <div>
+      <span class="signal-label">GitHub source</span>
+      <strong>{{ update_status.upstream|default:"-" }}</strong>
+    </div>
+    <div>
+      <span class="signal-label">Updates</span>
+      <strong>{{ update_status.behind|default:0 }}</strong>
+    </div>
+    <div>
+      <span class="signal-label">Local code changes</span>
+      <strong>{% if update_status.dirty %}Yes{% else %}No{% endif %}</strong>
+    </div>
+  </div>
+  <p class="mt-3 mb-0">{{ update_status.message }}</p>
+</div>
+
+<div class="section-panel">
+  {% if update_status.available %}
+    {% if update_status.dirty %}
+      <div class="alert alert-warning mb-0">
+        Updates are available, but local code files have changes. This protects your app from overwriting unfinished code work. Your company data and uploaded files are still safe.
+      </div>
+    {% else %}
+      <form method="post" action="{% url 'core:run_app_update' %}" data-loading-form data-loading-text="Updating TenderAI...">
+        {% csrf_token %}
+        <button class="btn btn-primary" type="submit" data-loading-button>Update TenderAI Now</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <div class="empty-state">No GitHub updates are available right now.</div>
+  {% endif %}
+
+  {% if request.session.last_update_output %}
+    <h2 class="h5 mt-4">Last update output</h2>
+    <pre class="update-output">{{ request.session.last_update_output }}</pre>
+  {% endif %}
+</div>
+
+<script>
+  document.querySelectorAll('[data-loading-form]').forEach((form) => {
+    form.addEventListener('submit', () => {
+      const button = form.querySelector('[data-loading-button]');
+      if (button) {
+        button.disabled = true;
+        button.textContent = form.dataset.loadingText || 'Working...';
+      }
+    });
+  });
+</script>
+{% endblock %}

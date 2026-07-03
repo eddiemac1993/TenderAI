@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading mb-4">
+  <div>
+    <p class="eyebrow mb-1">Team access</p>
+    <h1 class="h3 mb-1">Add user</h1>
+    <p class="text-muted mb-0">Create a login for a member of an organization.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'core:organizations' %}">Back</a>
+</div>
+
+<form method="post" class="section-panel">
+  {% csrf_token %}
+  {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+      {% if field.errors %}<div class="text-danger small">{{ field.errors|join:", " }}</div>{% endif %}
+    </div>
+  {% endfor %}
+  <button class="btn btn-primary" type="submit">Create user</button>
+</form>
+{% endblock %}

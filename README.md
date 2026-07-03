@@ -15,6 +15,49 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+## Local PC installation and safe updates
+
+TenderAI is designed so GitHub stores the app features, while each computer keeps its own private data.
+
+These local files are intentionally not committed to GitHub:
+
+- `db.sqlite3` - companies, tenders, council posts, settings, users, and all database records
+- `media/` - uploaded certificates, solicitation documents, bid packs, and generated files
+- `.env` - private passwords and environment settings
+
+That means another person can clone the GitHub repo, install TenderAI on their own PC, and add their own companies without receiving your companies or documents.
+
+For a new PC:
+
+```bash
+git clone https://github.com/eddiemac1993/TenderAI.git
+cd TenderAI
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py seed_core_companies
+python manage.py seed_council_sources
+python manage.py createsuperuser
+python manage.py runserver 127.0.0.1:8005
+```
+
+For future feature updates on that PC, run:
+
+```bash
+git pull
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+```
+
+On Windows you can also double-click:
+
+- `Start TenderAI.bat` to open the local app
+- `Update TenderAI.bat` to pull new features safely
+
+Updates should change code and database structure only. They should not overwrite local company data or uploaded documents because those files are ignored by Git.
+
 Environment variables:
 
 ```bash

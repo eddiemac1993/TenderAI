@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+  <div>
+    <p class="eyebrow mb-1">Bid task tracker</p>
+    <h1 class="h3 mb-1">{{ tender.title }}</h1>
+    <p class="text-muted mb-0">Track everything that must be done before submission.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{{ tender.get_absolute_url }}">Tender</a>
+    <a class="btn btn-primary" href="{% url 'tenders:task_create' tender.pk %}">Add task</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-5">
+    <div class="section-panel h-100">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="h5 mb-1">Submission progress</h2>
+          <p class="text-muted mb-0">{{ progress.done }} of {{ progress.total }} task(s) done</p>
+        </div>
+        <span class="score-badge score-{% if progress.percent >= 80 %}success{% elif progress.percent >= 40 %}warning{% else %}danger{% endif %}">{{ progress.percent }}%</span>
+      </div>
+      <div class="progress readiness-progress mt-3">
+        <div class="progress-bar" style="width: {{ progress.percent }}%"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="tender-count-grid">
+      <div class="count-tile"><span>Pending</span><strong>{{ progress.pending }}</strong></div>
+      <div class="count-tile"><span>Done</span><strong>{{ progress.done }}</strong></div>
+      <div class="count-tile"><span>Blocked</span><strong>{{ progress.blocked }}</strong></div>
+      <div class="count-tile"><span>Total</span><strong>{{ progress.total }}</strong></div>
+    </div>
+  </div>
+</div>
+
+{% if progress.itb_tasks %}
+  <div class="section-panel mb-4">
+    <div class="section-heading">
+      <div>
+        <h2 class="h5 mb-1">ITB ordered checklist</h2>
+        <p class="text-muted mb-0">These items follow the solicitation document's ITB 11.1 Documents Comprising the Bid order.</p>
+      </div>
+    </div>
+    <div class="bid-task-list">
+      {% for item in progress.itb_items %}
+        {% with task=item.task %}
+        <article class="bid-task-card task-{{ task.status|lower }}">
+          <div class="bid-task-main">
+            <div class="d-flex gap-2 flex-wrap mb-2">
+              <span class="badge text-bg-primary">{{ forloop.counter }}</span>
+              <span class="badge text-bg-{{ task.status_class }}">{{ task.get_status_display }}</span>
+              <span class="badge text-bg-{{ task.priority_class }}">{{ task.get_priority_display }}</span>
+              {% if task.due_date %}<span class="badge text-bg-light border">Due {{ task.due_date }}</span>{% endif %}
+            </div>
+            <h3 class="h5 mb-1">{{ task.title }}</h3>
+            {% if task.description %}<p class="text-muted mb-1">{{ task.description }}</p>{% endif %}
+            <div class="small"><strong>Bid pack output:</strong> {{ item.output }}</div>
+            {% if task.notes %}<div class="small"><strong>Notes:</strong> {{ task.notes }}</div>{% endif %}
+          </div>
+          <div class="bid-task-actions">
+            <form method="post" action="{% url 'tenders:task_status' tender.pk task.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <input type="hidden" name="status" value="DONE">
+              <button class="btn btn-sm btn-outline-success" type="submit">Done</button>
+            </form>
+            <form method="post" action="{% url 'tenders:task_status' tender.pk task.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <input type="hidden" name="status" value="PENDING">
+              <button class="btn btn-sm btn-outline-warning" type="submit">Pending</button>
+            </form>
+            <form method="post" action="{% url 'tenders:task_status' tender.pk task.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <input type="hidden" name="status" value="BLOCKED">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Blocked</button>
+            </form>
+          </div>
+        </article>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<h2 class="h5 mb-3">Other preparation tasks</h2>
+<div class="bid-task-list">
+  {% for task in progress.other_tasks %}
+    <article class="bid-task-card task-{{ task.status|lower }}">
+      <div class="bid-task-main">
+        <div class="d-flex gap-2 flex-wrap mb-2">
+          <span class="badge text-bg-{{ task.status_class }}">{{ task.get_status_display }}</span>
+          <span class="badge text-bg-{{ task.priority_class }}">{{ task.get_priority_display }}</span>
+          {% if task.due_date %}<span class="badge text-bg-light border">Due {{ task.due_date }}</span>{% endif %}
+        </div>
+        <h2 class="h5 mb-1">{{ task.title }}</h2>
+        {% if task.description %}<p class="text-muted mb-1">{{ task.description }}</p>{% endif %}
+        {% if task.notes %}<div class="small"><strong>Notes:</strong> {{ task.notes }}</div>{% endif %}
+      </div>
+      <div class="bid-task-actions">
+        <form method="post" action="{% url 'tenders:task_status' tender.pk task.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="status" value="DONE">
+          <button class="btn btn-sm btn-outline-success" type="submit">Done</button>
+        </form>
+        <form method="post" action="{% url 'tenders:task_status' tender.pk task.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="status" value="PENDING">
+          <button class="btn btn-sm btn-outline-warning" type="submit">Pending</button>
+        </form>
+        <form method="post" action="{% url 'tenders:task_status' tender.pk task.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="status" value="BLOCKED">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Blocked</button>
+        </form>
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state app-card">No tasks yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

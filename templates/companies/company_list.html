@@ -1,25 +1,64 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3">
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
   <div>
+    <p class="eyebrow mb-1">Company readiness</p>
     <h1 class="h3 mb-1">Companies</h1>
-    <p class="text-muted mb-0">Open a company or generate its profile pack with attached certificate PDFs.</p>
+    <p class="text-muted mb-0">Check bid readiness, profile gaps, certificates, and profile pack actions.</p>
   </div>
   <a class="btn btn-primary" href="{% url 'companies:create' %}">Add company</a>
 </div>
-<div class="list-group">
-  {% for company in companies %}
-    <div class="list-group-item">
-      <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
-        <a class="fw-semibold text-decoration-none" href="{{ company.get_absolute_url }}">{{ company.name }}</a>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="text-muted small">TPIN: {{ company.tpin|default:"-" }}</span>
-          <a class="btn btn-sm btn-outline-success" href="{% url 'companies:profile_pack_pdf' company.pk %}">Generate profile</a>
+
+<div class="metric-grid mb-4">
+  <div class="metric-card"><span>Total companies</span><strong>{{ companies|length }}</strong></div>
+  <div class="metric-card"><span>Bid-ready profiles</span><strong>{{ ready_company_count }}</strong></div>
+  <div class="metric-card metric-warning"><span>Incomplete profiles</span><strong>{{ incomplete_company_count }}</strong></div>
+  <a class="metric-card" href="{% url 'documents:list' %}"><span>Document vault</span><strong>Open</strong></a>
+</div>
+
+<div class="company-card-grid">
+  {% for card in company_cards %}
+    <article class="company-card">
+      <div class="d-flex justify-content-between gap-3 align-items-start">
+        <div>
+          <h2 class="h5 mb-1"><a href="{{ card.company.get_absolute_url }}">{{ card.company.name }}</a></h2>
+          <div class="text-muted small">
+            TPIN: {{ card.company.tpin|default:"-" }} · Registration: {{ card.company.registration_number|default:"-" }}
+          </div>
         </div>
+        <span class="score-badge score-{% if card.readiness.score >= 80 %}success{% elif card.readiness.score >= 50 %}warning{% else %}danger{% endif %}">{{ card.readiness.score }}%</span>
       </div>
-    </div>
+
+      <div class="progress readiness-progress my-3">
+        <div class="progress-bar" style="width: {{ card.readiness.score }}%"></div>
+      </div>
+
+      <div class="company-chip-row">
+        <span class="badge text-bg-light border">{{ card.document_count }} document(s)</span>
+        {% for category in card.company.business_categories.all %}
+          <span class="badge text-bg-light border">{{ category.name }}</span>
+        {% empty %}
+          <span class="badge text-bg-warning">No business category</span>
+        {% endfor %}
+      </div>
+
+      {% if card.gaps %}
+        <div class="profile-gap-box mt-3">
+          <strong>Missing profile fields</strong>
+          <div>{{ card.gaps|join:", " }}</div>
+        </div>
+      {% else %}
+        <div class="profile-ready-box mt-3">Profile details look complete.</div>
+      {% endif %}
+
+      <div class="d-flex gap-2 flex-wrap mt-3">
+        <a class="btn btn-sm btn-primary" href="{{ card.company.get_absolute_url }}">Open</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'documents:create' %}?company={{ card.company.pk }}">Upload document</a>
+        <a class="btn btn-sm btn-outline-success" href="{% url 'companies:profile_pack_pdf' card.company.pk %}">Generate profile</a>
+      </div>
+    </article>
   {% empty %}
-    <div class="list-group-item text-muted">No companies yet.</div>
+    <div class="empty-state app-card">No companies yet. Add the core companies first, then upload their certificates.</div>
   {% endfor %}
 </div>
 {% endblock %}

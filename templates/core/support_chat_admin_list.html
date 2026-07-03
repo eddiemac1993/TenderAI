@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading mb-4">
+  <div>
+    <p class="eyebrow mb-1">Admin support review</p>
+    <h1 class="h3 mb-1">User questions and AI answers</h1>
+    <p class="text-muted mb-0">Review what users asked, how TenderAI replied, and add clarification where needed.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'core:support_chat' %}">New chat</a>
+</div>
+
+<form method="get" class="app-card tender-search-panel mb-3">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label" for="status">Status</label>
+      <select class="form-select" id="status" name="status">
+        <option value="">All statuses</option>
+        {% for value,label in status_options %}
+          <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-primary" type="submit">Filter</button>
+      <a class="btn btn-outline-secondary" href="{% url 'core:support_chat_admin' %}">Reset</a>
+    </div>
+  </div>
+</form>
+
+<div class="document-card-grid">
+  {% for session in chat_sessions %}
+    <article class="document-card">
+      <div class="d-flex justify-content-between gap-2">
+        <div>
+          <span class="document-type">{{ session.user_name|default:session.user_email|default:"Guest user" }}</span>
+          <h2 class="h5 mb-1"><a href="{{ session.get_absolute_url }}">Support chat #{{ session.pk }}</a></h2>
+          <div class="text-muted small">Updated {{ session.updated_at|date:"d/m/Y H:i" }}</div>
+        </div>
+        <span class="badge text-bg-light border">{{ session.get_status_display }}</span>
+      </div>
+      {% with last_message=session.messages.last %}
+        {% if last_message %}
+          <p class="text-muted mt-3 mb-0">{{ last_message.message|truncatechars:180 }}</p>
+        {% endif %}
+      {% endwith %}
+      <a class="btn btn-sm btn-primary mt-3" href="{{ session.get_absolute_url }}">Review</a>
+    </article>
+  {% empty %}
+    <div class="empty-state app-card">No support chats yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

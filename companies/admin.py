@@ -21,8 +21,9 @@ class PacraDetailInline(admin.StackedInline):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'tpin', 'registration_number', 'email')
-    search_fields = ('name', 'tpin', 'registration_number')
+    list_display = ('name', 'organization', 'tpin', 'registration_number', 'email')
+    list_filter = ('organization',)
+    search_fields = ('name', 'tpin', 'registration_number', 'organization__name')
     filter_horizontal = ('business_categories',)
     inlines = [DirectorInline, BankDetailInline, PacraDetailInline]
 

@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 
 from django.contrib import messages
 from django.db.models import Q
@@ -6,7 +7,9 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
 from ai_engine.forms import SolicitationDocumentForm, TenderChatForm
@@ -14,13 +17,16 @@ from ai_engine.models import SolicitationDocument, TenderChatMessage
 from ai_engine.services import PlaceholderTenderAnalysisService
 from ai_engine.services import answer_tender_question
 from ai_engine.services import process_solicitation_document
+from bid_generator.services import document_gap_rows_for_company, xml_required_document_evidence
 from companies.models import BusinessCategory, Company
+from core.tenancy import filter_queryset_for_user, user_organization
 from documents.models import CompanyDocument
 
-from .forms import TenderForm, TenderRequirementForm, ZppaJsonImportForm, ZppaManualImportForm
-from .models import Tender, TenderMatch, TenderRequirement, ZppaScrapeLog
-from .services import calculate_tender_matches
-from .zppa_scraper import import_public_zppa_tenders
+from .forms import BidTaskForm, TenderForm, TenderRequirementForm, ZppaJsonImportForm, ZppaManualImportForm, ZppaUrlImportForm
+from .models import BidTask, Tender, TenderMatch, TenderRequirement, ZppaScrapeLog
+from .services import bid_task_progress, calculate_tender_matches, required_document_types, tender_decisions, tender_signals
+from .zppa_documents import PublicZppaDocumentFetcher
+from .zppa_scraper import bid_security_amount_from_detail_rows, import_public_zppa_tender_from_url, import_public_zppa_tenders, payment_amount_from_detail_rows
 
 
 class TenderListView(ListView):
@@ -34,26 +40,73 @@ class TenderListView(ListView):
             .get_queryset()
             .annotate(latest_at=Coalesce('published_at', 'created_at'))
         )
-        method = self.request.GET.get('method', '')
-        if method == 'simplified':
-            queryset = queryset.filter(
-                Q(procurement_method__icontains='simplified')
-                | Q(procurement_method__icontains='shopping')
-                | Q(procurement_method__icontains='request for quotation')
-            )
-        elif method == 'open-national':
-            queryset = queryset.filter(procurement_method__icontains='Open Bidding National')
+        queryset = self.apply_filters(queryset)
         return queryset.order_by('-latest_at', '-id')
+
+    def apply_filters(self, queryset):
+        query = self.request.GET.get('q', '').strip()
+        entity = self.request.GET.get('entity', '').strip()
+        period = self.request.GET.get('period', '').strip()
+        today = timezone.localdate()
+        now = timezone.now()
+
+        if query:
+            queryset = queryset.filter(
+                Q(title__icontains=query)
+                | Q(tender_number__icontains=query)
+                | Q(zppa_resource_id__icontains=query)
+                | Q(procuring_entity__icontains=query)
+                | Q(description__icontains=query)
+                | Q(procurement_method__icontains=query)
+            )
+        if entity:
+            queryset = queryset.filter(procuring_entity=entity)
+        if period == 'published_today':
+            queryset = queryset.filter(published_at__date=today)
+        elif period == 'published_7':
+            queryset = queryset.filter(published_at__date__gte=today - timedelta(days=7))
+        elif period == 'closing_today':
+            queryset = queryset.filter(Q(closing_at__date=today) | Q(closing_date=today))
+        elif period == 'closing_7':
+            queryset = queryset.filter(
+                Q(closing_at__date__gte=today, closing_at__date__lte=today + timedelta(days=7))
+                | Q(closing_date__gte=today, closing_date__lte=today + timedelta(days=7))
+            )
+        elif period == 'closing_30':
+            queryset = queryset.filter(
+                Q(closing_at__date__gte=today, closing_at__date__lte=today + timedelta(days=30))
+                | Q(closing_date__gte=today, closing_date__lte=today + timedelta(days=30))
+            )
+        elif period == 'already_closed':
+            queryset = queryset.filter(Q(closing_at__lt=now) | Q(closing_date__lt=today))
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['active_method'] = self.request.GET.get('method', '')
-        context['open_national_count'] = Tender.objects.filter(procurement_method__icontains='Open Bidding National').count()
-        context['simplified_count'] = Tender.objects.filter(
-            Q(procurement_method__icontains='simplified')
-            | Q(procurement_method__icontains='shopping')
-            | Q(procurement_method__icontains='request for quotation')
-        ).count()
+        filtered_queryset = self.apply_filters(
+            Tender.objects.annotate(latest_at=Coalesce('published_at', 'created_at'))
+        )
+        context['selected_query'] = self.request.GET.get('q', '').strip()
+        context['selected_entity'] = self.request.GET.get('entity', '').strip()
+        context['selected_period'] = self.request.GET.get('period', '').strip()
+        context['entity_options'] = (
+            Tender.objects.exclude(procuring_entity='')
+            .order_by('procuring_entity')
+            .values_list('procuring_entity', flat=True)
+            .distinct()
+        )
+        context['period_options'] = [
+            ('', 'All periods'),
+            ('published_today', 'Published today'),
+            ('published_7', 'Published last 7 days'),
+            ('closing_today', 'Closing today'),
+            ('closing_7', 'Closing in 7 days'),
+            ('closing_30', 'Closing in 30 days'),
+            ('already_closed', 'Already closed'),
+        ]
+        context['filtered_count'] = filtered_queryset.count()
+        context['open_national_count'] = filtered_queryset.filter(procurement_method__icontains='Open Bidding National').count()
+        context['entity_count'] = filtered_queryset.exclude(procuring_entity='').values('procuring_entity').distinct().count()
         return context
 
 
@@ -66,6 +119,22 @@ class TenderDetailView(DetailView):
         context['solicitation_form'] = SolicitationDocumentForm()
         context['chat_form'] = TenderChatForm()
         context['chat_messages'] = self.object.chat_messages.select_related('solicitation_document')[:8]
+        organization = user_organization(self.request.user) if not self.request.user.is_superuser else None
+        matches = calculate_tender_matches(self.object, organization=organization)
+        decisions = tender_decisions(self.object, matches)
+        context['best_decision'] = decisions[0] if decisions else None
+        context['top_decisions'] = decisions[:4]
+        context['xml_evidence_summary'] = xml_required_document_evidence(self.object)
+        if decisions:
+            best_company = decisions[0]['match'].company
+            context['best_company_document_gaps'] = document_gap_rows_for_company(self.object, best_company)
+            context['best_company_for_uploads'] = best_company
+        context['required_document_labels'] = [
+            CompanyDocument.DocumentType(doc_type).label for doc_type in required_document_types(self.object)
+        ]
+        context['tender_signals'] = tender_signals(self.object)
+        context['bid_task_progress'] = bid_task_progress(self.object)
+        context['bid_company_options'] = filter_queryset_for_user(Company.objects.order_by('name'), self.request.user)
         return context
 
 
@@ -153,6 +222,30 @@ class ZppaJsonImportView(FormView):
         return super().form_valid(form)
 
 
+class ZppaUrlImportView(FormView):
+    template_name = 'tenders/zppa_url_import.html'
+    form_class = ZppaUrlImportForm
+
+    def form_valid(self, form):
+        url = form.cleaned_data['url']
+        try:
+            tender, created = import_public_zppa_tender_from_url(url)
+        except Exception as exc:
+            messages.error(self.request, f'TenderAI could not import that public ZPPA URL: {exc}')
+            return self.form_invalid(form)
+
+        messages.success(self.request, f'{"Imported" if created else "Updated"} tender from ZPPA URL.')
+        if form.cleaned_data.get('fetch_documents'):
+            try:
+                fetched, skipped = PublicZppaDocumentFetcher().fetch_all_for_tender(tender)
+                messages.success(self.request, f'Fetched and analyzed {len(fetched)} public ZPPA document(s).')
+                if skipped:
+                    messages.warning(self.request, 'Some public documents could not be fetched: ' + ' | '.join(skipped[:3]))
+            except Exception as exc:
+                messages.warning(self.request, f'Tender imported, but public documents could not be fetched: {exc}')
+        return redirect(tender)
+
+
 class TenderMatchView(TemplateView):
     template_name = 'tenders/matching.html'
 
@@ -160,8 +253,61 @@ class TenderMatchView(TemplateView):
         context = super().get_context_data(**kwargs)
         tender = get_object_or_404(Tender, pk=self.kwargs['pk'])
         context['tender'] = tender
-        context['matches'] = calculate_tender_matches(tender)
+        organization = user_organization(self.request.user) if not self.request.user.is_superuser else None
+        matches = calculate_tender_matches(tender, organization=organization)
+        context['matches'] = matches
+        context['decisions'] = tender_decisions(tender, matches)
         return context
+
+
+class BidTaskListView(TemplateView):
+    template_name = 'tenders/bid_tasks.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tender = get_object_or_404(Tender, pk=self.kwargs['pk'])
+        context['tender'] = tender
+        context['progress'] = bid_task_progress(tender)
+        context['task_form'] = BidTaskForm(initial={'due_date': tender.deadline_date})
+        return context
+
+
+class BidTaskCreateView(CreateView):
+    model = BidTask
+    form_class = BidTaskForm
+    template_name = 'tenders/bid_task_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.tender = get_object_or_404(Tender, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.tender = self.tender
+        form.instance.sort_order = 500
+        messages.success(self.request, 'Bid task added.')
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tender'] = self.tender
+        return context
+
+    def get_success_url(self):
+        return reverse('tenders:tasks', args=[self.tender.pk])
+
+
+@require_POST
+def update_bid_task_status(request, pk, task_id):
+    tender = get_object_or_404(Tender, pk=pk)
+    task = get_object_or_404(BidTask, pk=task_id, tender=tender)
+    status = request.POST.get('status')
+    if status in BidTask.Status.values:
+        task.status = status
+        task.save(update_fields=['status', 'updated_at'])
+        messages.success(request, f'Task updated: {task.title}.')
+    else:
+        messages.error(request, 'Invalid task status.')
+    return redirect(request.POST.get('next') or reverse('tenders:tasks', args=[tender.pk]))
 
 
 def upsert_zppa_import_item(item):
@@ -174,6 +320,9 @@ def upsert_zppa_import_item(item):
         lookup = {'title': item['title'], 'imported_reference': item.get('url', '')}
     closing_at = parse_datetime(item.get('closing_at') or '')
     published_at = parse_datetime(item.get('published_at') or '')
+    detail_rows = item.get('detail_rows') or []
+    participation_fee = payment_amount_from_detail_rows(detail_rows)
+    bid_security_amount = bid_security_amount_from_detail_rows(detail_rows)
     tender, created = Tender.objects.update_or_create(
         **lookup,
         defaults={
@@ -188,7 +337,9 @@ def upsert_zppa_import_item(item):
             'closing_at': closing_at,
             'submission_method': item.get('submission_method', ''),
             'procurement_method': item.get('procurement_method', ''),
-            'zppa_details': item.get('detail_rows') or [],
+            'bid_security_amount': bid_security_amount,
+            'participation_fee': participation_fee,
+            'zppa_details': detail_rows,
             'imported_reference': item.get('url', ''),
             'notes': f'Imported from ZPPA JSON export. Listed date: {item.get("listed_date") or "unknown"}.',
         },
@@ -243,8 +394,60 @@ def upload_solicitation_document(request, pk):
             request,
             f'Solicitation uploaded and analyzed. Found {len(analysis.get("required_documents", []))} required document signal(s).',
         )
+        if analysis.get('bid_tasks_created'):
+            messages.info(request, f'Created {analysis["bid_tasks_created"]} bid task(s) from the solicitation analysis.')
     else:
-        messages.error(request, 'Could not upload solicitation document. Please choose a PDF, DOCX, or text file.')
+        messages.error(request, 'Could not upload solicitation document. Please choose a PDF, DOCX, XML, or text file.')
+    return redirect(tender)
+
+
+@require_POST
+def fetch_zppa_solicitation_document(request, pk):
+    tender = get_object_or_404(Tender, pk=pk)
+    try:
+        solicitation, public_document, analysis = PublicZppaDocumentFetcher().fetch_for_tender(tender)
+    except Exception as exc:
+        messages.error(
+            request,
+            f'Could not fetch a public ZPPA solicitation document: {exc}',
+        )
+        return redirect(tender)
+    messages.success(
+        request,
+        f'Fetched and analyzed public ZPPA document: {public_document.filename}. '
+        f'Found {len(analysis.get("required_documents", []))} required document signal(s).',
+    )
+    if analysis.get('bid_tasks_created'):
+        messages.info(request, f'Created {analysis["bid_tasks_created"]} bid task(s) from the solicitation analysis.')
+    return redirect(tender)
+
+
+@require_POST
+def fetch_zppa_all_public_documents(request, pk):
+    tender = get_object_or_404(Tender, pk=pk)
+    try:
+        fetched, skipped = PublicZppaDocumentFetcher().fetch_all_for_tender(tender)
+    except Exception as exc:
+        messages.error(
+            request,
+            f'Could not fetch public ZPPA documents: {exc}',
+        )
+        return redirect(tender)
+
+    document_names = ', '.join(public_doc.filename for _, public_doc, _ in fetched[:5])
+    messages.success(
+        request,
+        f'Fetched and analyzed {len(fetched)} public ZPPA document(s): {document_names}.',
+    )
+    created_tasks = sum(analysis.get('bid_tasks_created', 0) for _, _, analysis in fetched)
+    if created_tasks:
+        messages.info(request, f'Created {created_tasks} bid task(s) from the downloaded documents.')
+    if skipped:
+        messages.warning(
+            request,
+            'Some ZPPA documents could not be downloaded publicly. They may require payment or login: '
+            + ' | '.join(skipped[:3])
+        )
     return redirect(tender)
 
 

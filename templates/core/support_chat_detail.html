@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading mb-4">
+  <div>
+    <p class="eyebrow mb-1">Support conversation</p>
+    <h1 class="h3 mb-1">{{ chat_session.user_name|default:chat_session.user_email|default:"TenderAI user" }}</h1>
+    <p class="text-muted mb-0">Status: <span class="badge text-bg-light border">{{ chat_session.get_status_display }}</span></p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{% url 'core:support_chat' %}">New chat</a>
+    <a class="btn btn-outline-primary" href="{% url 'core:support_chat_admin' %}">Admin review</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="support-chat-panel">
+      {% for message in chat_session.messages.all %}
+        <div class="support-message support-message-{{ message.sender|lower }}">
+          <div class="support-message-meta">
+            <strong>{{ message.get_sender_display }}</strong>
+            <span>{{ message.created_at|date:"d/m/Y H:i" }}</span>
+            {% if message.sender == 'AI' %}<span>Confidence {{ message.confidence }}%</span>{% endif %}
+          </div>
+          <div>{{ message.message|linebreaksbr }}</div>
+        </div>
+      {% endfor %}
+    </div>
+    <form method="post" action="{% url 'core:ask_support_chat' chat_session.pk %}" class="section-panel mt-3">
+      {% csrf_token %}
+      <label class="form-label" for="{{ question_form.question.id_for_label }}">{{ question_form.question.label }}</label>
+      {{ question_form.question }}
+      <button class="btn btn-primary mt-3" type="submit">Ask</button>
+    </form>
+  </div>
+  <div class="col-lg-4">
+    <div class="section-panel mb-3">
+      <h2 class="h5">Was the answer helpful?</h2>
+      <div class="d-grid gap-2">
+        <form method="post" action="{% url 'core:support_chat_status' chat_session.pk 'SATISFIED' %}">
+          {% csrf_token %}
+          <button class="btn btn-success w-100" type="submit">Satisfied</button>
+        </form>
+        <form method="post" action="{% url 'core:support_chat_status' chat_session.pk 'NEEDS_ADMIN' %}">
+          {% csrf_token %}
+          <button class="btn btn-warning w-100" type="submit">Need admin clarification</button>
+        </form>
+      </div>
+    </div>
+    <form method="post" action="{% url 'core:support_chat_admin_reply' chat_session.pk %}" class="section-panel">
+      {% csrf_token %}
+      <h2 class="h5">Admin clarification</h2>
+      <div class="mb-3">
+        <label class="form-label" for="{{ admin_reply_form.message.id_for_label }}">{{ admin_reply_form.message.label }}</label>
+        {{ admin_reply_form.message }}
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="{{ admin_reply_form.status.id_for_label }}">{{ admin_reply_form.status.label }}</label>
+        {{ admin_reply_form.status }}
+      </div>
+      <button class="btn btn-outline-primary" type="submit">Save clarification</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

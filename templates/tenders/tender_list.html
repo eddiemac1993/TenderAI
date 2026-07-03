@@ -4,39 +4,85 @@
   <div>
     <p class="eyebrow mb-1">Latest first</p>
     <h1 class="h3 mb-1">Tenders</h1>
-    <p class="text-muted mb-0">Use the ZPPA method shortcuts below to quickly separate open national and simplified bidding opportunities.</p>
+    <p class="text-muted mb-0">Scrape public ZPPA tenders, then filter by entity, period, or search text.</p>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-success" href="{% url 'tenders:zppa_find_by_url' %}">Find by ZPPA URL</a>
     <a class="btn btn-outline-success" href="{% url 'tenders:zppa_scrape_today' %}">Scrape today</a>
     <a class="btn btn-outline-secondary" href="{% url 'tenders:zppa_scrape_logs' %}">Scrape logs</a>
-    <a class="btn btn-outline-primary" href="{% url 'tenders:zppa_import_json' %}">Import ZPPA JSON</a>
-    <a class="btn btn-outline-primary" href="{% url 'tenders:zppa_import' %}">Manual ZPPA import</a>
     <a class="btn btn-primary" href="{% url 'tenders:create' %}">Add tender</a>
   </div>
 </div>
 
-<div class="tender-filter-bar mb-3">
-  <a class="filter-pill {% if not active_method %}active{% endif %}" href="{% url 'tenders:list' %}">All latest</a>
-  <a class="filter-pill {% if active_method == 'open-national' %}active{% endif %}" href="{% url 'tenders:list' %}?method=open-national">Open Bidding National <span>{{ open_national_count }}</span></a>
-  <a class="filter-pill {% if active_method == 'simplified' %}active{% endif %}" href="{% url 'tenders:list' %}?method=simplified">Simplified Bidding <span>{{ simplified_count }}</span></a>
+<form method="get" class="app-card tender-search-panel mb-3">
+  <div class="row g-3 align-items-end">
+    <div class="col-lg-4">
+      <label class="form-label" for="id_entity">Procuring entity</label>
+      <select class="form-select" id="id_entity" name="entity">
+        <option value="">All entities</option>
+        {% for entity in entity_options %}
+          <option value="{{ entity }}" {% if selected_entity == entity %}selected{% endif %}>{{ entity }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-lg-3">
+      <label class="form-label" for="id_period">Period</label>
+      <select class="form-select" id="id_period" name="period">
+        {% for value,label in period_options %}
+          <option value="{{ value }}" {% if selected_period == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-lg-3">
+      <label class="form-label" for="id_q">Search</label>
+      <input class="form-control" id="id_q" type="search" name="q" value="{{ selected_query }}" placeholder="Title, number, resource ID">
+    </div>
+    <div class="col-lg-2 d-flex gap-2">
+      <button class="btn btn-primary flex-fill" type="submit">Filter</button>
+      <a class="btn btn-outline-secondary" href="{% url 'tenders:list' %}">Reset</a>
+    </div>
+  </div>
+</form>
+
+<div class="tender-count-grid mb-3">
+  <div class="count-tile"><span>Showing</span><strong>{{ filtered_count }}</strong></div>
+  <div class="count-tile"><span>Entities in result</span><strong>{{ entity_count }}</strong></div>
+  <div class="count-tile"><span>Open Bidding National</span><strong>{{ open_national_count }}</strong></div>
 </div>
 
-<div class="table-responsive">
-  <table class="table table-striped tender-table">
-    <tr><th>Title</th><th>Entity</th><th>Published</th><th>Closing</th><th>Method</th><th>Status</th><th></th></tr>
-    {% for tender in tenders %}
-      <tr>
-        <td class="tender-title-cell">{{ tender.title }}</td>
-        <td>{{ tender.procuring_entity }}</td>
-        <td>{{ tender.published_at|date:"d/m/Y H:i"|default:"-" }}</td>
-        <td>{{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</td>
-        <td>{{ tender.procurement_method|default:"-" }}</td>
-        <td>{{ tender.get_status_display }}</td>
-        <td><a class="btn btn-sm btn-outline-primary" href="{{ tender.get_absolute_url }}">View</a></td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="7" class="text-muted">No tenders found for this filter.</td></tr>
-    {% endfor %}
-  </table>
+<div class="tender-card-list">
+  {% for tender in tenders %}
+    <article class="tender-result-card">
+      <div class="tender-result-main">
+        <div class="d-flex gap-2 flex-wrap mb-2">
+          <span class="badge text-bg-{{ tender.urgency_class }}">{{ tender.urgency_label }}</span>
+          <span class="badge text-bg-light border">{{ tender.get_status_display }}</span>
+          {% if tender.procurement_method %}<span class="badge text-bg-light border">{{ tender.procurement_method }}</span>{% endif %}
+        </div>
+        <h2 class="h5 mb-2"><a href="{{ tender.get_absolute_url }}">{{ tender.title }}</a></h2>
+        <div class="tender-meta">
+          <span>{{ tender.procuring_entity }}</span>
+          <span>Published: {{ tender.published_at|date:"d/m/Y H:i"|default:"-" }}</span>
+          <span>Closing: {{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</span>
+        </div>
+        {% if tender.description %}
+          <p class="text-muted mt-2 mb-0">{{ tender.description|truncatechars:180 }}</p>
+        {% endif %}
+      </div>
+      <div class="tender-result-actions">
+        <a class="btn btn-sm btn-primary" href="{{ tender.get_absolute_url }}">View</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ tender.get_absolute_url }}#ai-pane">AI / Upload</a>
+        <a class="btn btn-sm btn-outline-success" href="{% url 'tenders:match' tender.pk %}">Match</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:tasks' tender.pk %}">Tasks</a>
+        {% if tender.imported_reference %}
+          <a class="btn btn-sm btn-outline-secondary" href="{{ tender.imported_reference }}" target="_blank" rel="noopener">ZPPA</a>
+        {% endif %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state app-card">
+      No tenders found for this filter. Try resetting the filters or click <strong>Scrape today</strong>.
+    </div>
+  {% endfor %}
 </div>
 {% endblock %}

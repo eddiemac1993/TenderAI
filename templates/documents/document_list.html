@@ -1,5 +1,83 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3"><h1 class="h3">Company documents</h1><a class="btn btn-primary" href="{% url 'documents:create' %}">Upload document</a></div>
-<div class="table-responsive"><table class="table table-striped"><tr><th>Company</th><th>Type</th><th>Title</th><th>Expiry</th><th></th></tr>{% for doc in documents %}<tr><td>{{ doc.company }}</td><td>{{ doc.get_document_type_display }}</td><td>{{ doc.title }}</td><td>{% if doc.is_expired %}<span class="text-danger">{{ doc.expiry_date }}</span>{% else %}{{ doc.expiry_date|default:"-" }}{% endif %}</td><td><a href="{{ doc.get_absolute_url }}">View</a></td></tr>{% empty %}<tr><td colspan="5" class="text-muted">No documents.</td></tr>{% endfor %}</table></div>
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+  <div>
+    <p class="eyebrow mb-1">Document vault</p>
+    <h1 class="h3 mb-1">Company documents</h1>
+    <p class="text-muted mb-0">Track certificates, expiry dates, company profiles, and past contracts.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'documents:create' %}">Upload document</a>
+</div>
+
+<form method="get" class="app-card tender-search-panel mb-3">
+  <div class="row g-3 align-items-end">
+    <div class="col-lg-3">
+      <label class="form-label" for="id_company">Company</label>
+      <select class="form-select" id="id_company" name="company">
+        <option value="">All companies</option>
+        {% for company in company_options %}
+          <option value="{{ company.pk }}" {% if selected_company == company.pk|stringformat:"s" %}selected{% endif %}>{{ company.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-lg-3">
+      <label class="form-label" for="id_document_type">Document type</label>
+      <select class="form-select" id="id_document_type" name="document_type">
+        <option value="">All document types</option>
+        {% for value,label in document_type_options %}
+          <option value="{{ value }}" {% if selected_document_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-lg-2">
+      <label class="form-label" for="id_status">Status</label>
+      <select class="form-select" id="id_status" name="status">
+        {% for value,label in status_options %}
+          <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-lg-2">
+      <label class="form-label" for="id_q">Search</label>
+      <input class="form-control" id="id_q" type="search" name="q" value="{{ selected_query }}" placeholder="Title, notes, company">
+    </div>
+    <div class="col-lg-2 d-flex gap-2">
+      <button class="btn btn-primary flex-fill" type="submit">Filter</button>
+      <a class="btn btn-outline-secondary" href="{% url 'documents:list' %}">Reset</a>
+    </div>
+  </div>
+</form>
+
+<div class="tender-count-grid mb-3">
+  <div class="count-tile"><span>Showing</span><strong>{{ filtered_count }}</strong></div>
+  <div class="count-tile"><span>Ready / valid</span><strong>{{ ready_count }}</strong></div>
+  <div class="count-tile"><span>Expiring soon</span><strong>{{ expiring_count }}</strong></div>
+  <div class="count-tile"><span>Expired</span><strong>{{ expired_count }}</strong></div>
+</div>
+
+<div class="document-card-grid">
+  {% for doc in documents %}
+    <article class="document-card {% if doc.is_expired %}document-expired{% elif doc.is_expiring_soon %}document-expiring{% endif %}">
+      <div class="d-flex justify-content-between gap-3 align-items-start">
+        <div>
+          <span class="document-type">{{ doc.get_document_type_display }}</span>
+          <h2 class="h5 mb-1"><a href="{{ doc.get_absolute_url }}">{{ doc.title }}</a></h2>
+          <div class="text-muted">{{ doc.company }}</div>
+        </div>
+        <span class="badge text-bg-{{ doc.status_class }}">{{ doc.status_label }}</span>
+      </div>
+      <div class="document-meta mt-3">
+        <span>Issue: {{ doc.issue_date|default:"-" }}</span>
+        <span>Expiry: {{ doc.expiry_date|default:"No expiry" }}</span>
+      </div>
+      <div class="d-flex gap-2 mt-3">
+        <a class="btn btn-sm btn-outline-primary" href="{{ doc.get_absolute_url }}">View</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'documents:update' doc.pk %}">Edit</a>
+        {% if doc.file %}<a class="btn btn-sm btn-outline-success" href="{{ doc.file.url }}">File</a>{% endif %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state app-card">No company documents yet. Upload PACRA, ZRA, ZPPA, TPIN, NAPSA, Workers Compensation, NCC, ERB/EIZ, and company profiles.</div>
+  {% endfor %}
+</div>
 {% endblock %}

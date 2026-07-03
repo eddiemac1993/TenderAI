@@ -1,38 +1,82 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+<div class="company-profile-header mb-4">
   <div>
+    <p class="eyebrow mb-1">Company profile</p>
     <h1 class="h3 mb-1">{{ object.name }}</h1>
     {% if missing_profile_fields %}
       <div class="text-warning small">Missing profile fields: {{ missing_profile_fields|join:", " }}</div>
+    {% else %}
+      <div class="text-muted small">Profile details look complete.</div>
     {% endif %}
   </div>
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap">
     <form method="post" action="{% url 'companies:sync_profile' object.pk %}">
       {% csrf_token %}
       <button class="btn btn-outline-primary" type="submit">Sync from documents</button>
     </form>
+    <a class="btn btn-outline-primary" href="{% url 'documents:create' %}?company={{ object.pk }}">Upload document</a>
     <a class="btn btn-outline-success" href="{% url 'companies:profile_pack_pdf' object.pk %}">Generate profile</a>
     <a class="btn btn-primary" href="{% url 'companies:update' object.pk %}">Edit profile</a>
   </div>
 </div>
 <div class="row g-4">
   <div class="col-lg-7">
-    <div class="card card-body">
-      <p><strong>TPIN:</strong> {{ object.tpin|default:"-" }}</p>
-      <p><strong>Registration:</strong> {{ object.registration_number|default:"-" }}</p>
-      <p><strong>Phone:</strong> {{ object.phone|default:"-" }}</p>
-      <p><strong>Email:</strong> {{ object.email|default:"-" }}</p>
-      <p><strong>Address:</strong> {{ object.address|default:"-"|linebreaksbr }}</p>
-      <p>{{ object.profile_summary|default:"No company profile summary yet."|linebreaksbr }}</p>
+    <div class="section-panel h-100">
+      <h2 class="h5">Company profile</h2>
+      <dl class="detail-list">
+        <dt>TPIN</dt><dd>{{ object.tpin|default:"-" }}</dd>
+        <dt>Registration</dt><dd>{{ object.registration_number|default:"-" }}</dd>
+        <dt>Phone</dt><dd>{{ object.phone|default:"-" }}</dd>
+        <dt>Email</dt><dd>{{ object.email|default:"-" }}</dd>
+        <dt>Address</dt><dd>{{ object.address|default:"-"|linebreaksbr }}</dd>
+      </dl>
+      <h3 class="h6">Profile summary</h3>
+      <p class="mb-0">{{ object.profile_summary|default:"No company profile summary yet."|linebreaksbr }}</p>
     </div>
   </div>
   <div class="col-lg-5">
-    <h2 class="h5">Documents</h2>
+    <div class="section-panel h-100">
+      <div class="d-flex justify-content-between align-items-start gap-3">
+        <div>
+          <h2 class="h5 mb-1">Document readiness</h2>
+          <div class="text-muted small">{{ readiness.ready_count }} of {{ readiness.total_count }} core documents ready</div>
+        </div>
+        <span class="score-badge score-{% if readiness.score >= 80 %}success{% elif readiness.score >= 50 %}warning{% else %}danger{% endif %}">{{ readiness.score }}%</span>
+      </div>
+      <div class="progress readiness-progress my-3">
+        <div class="progress-bar" style="width: {{ readiness.score }}%"></div>
+      </div>
+      <div class="readiness-list">
+        {% for row in readiness.rows %}
+          <div class="readiness-row">
+            <div>
+              <strong>{{ row.label }}</strong>
+              <div class="text-muted small">{{ row.detail }}</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge text-bg-{{ row.badge }}">{{ row.status }}</span>
+              {% if row.status != 'Ready' %}
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'documents:create' %}?company={{ object.pk }}&document_type={{ row.type }}">Add</a>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-12">
+    <h2 class="h5">Uploaded documents</h2>
     <p class="text-muted small">Upload the main company profile as document type <strong>Company Profile</strong>. Generate profile will place that file first, then attach certificate PDFs.</p>
     <div class="list-group">
       {% for doc in object.documents.all %}
-        <a class="list-group-item" href="{{ doc.get_absolute_url }}">{{ doc.get_document_type_display }} - {{ doc.expiry_date|default:"No expiry" }}</a>
+        <a class="list-group-item d-flex justify-content-between align-items-center gap-3" href="{{ doc.get_absolute_url }}">
+          <span>{{ doc.get_document_type_display }}{% if doc.title %} - {{ doc.title }}{% endif %}</span>
+          <span class="badge {% if doc.is_expired %}text-bg-danger{% else %}text-bg-light border{% endif %}">{{ doc.expiry_date|default:"No expiry" }}</span>
+        </a>
       {% empty %}
         <div class="list-group-item text-muted">No documents uploaded.</div>
       {% endfor %}

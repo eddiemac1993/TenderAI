@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}About TenderAI{% endblock %}
+{% block content %}
+<section class="about-hero mb-4">
+  <div>
+    <p class="eyebrow mb-1">How to use TenderAI</p>
+    <h1 class="h3 mb-2">TenderAI workflow guide</h1>
+    <p class="mb-0">TenderAI helps you find public ZPPA tenders, check which company is ready to bid, manage certificates, analyze solicitation documents, and generate bid packs.</p>
+  </div>
+  <a class="btn btn-light" href="{% url 'dashboard' %}">Go to dashboard</a>
+</section>
+
+<div class="instruction-grid mb-4">
+  <div class="instruction-card">
+    <span>1</span>
+    <h2>Scrape ZPPA tenders</h2>
+    <p>Open the Dashboard or Tenders page and click <strong>Scrape ZPPA today</strong>. TenderAI imports public ZPPA tender listings and puts the latest ones first.</p>
+    <a href="{% url 'tenders:list' %}">Open tenders</a>
+  </div>
+  <div class="instruction-card">
+    <span>2</span>
+    <h2>Filter and choose a tender</h2>
+    <p>Use the tender filters to search by procuring entity, period, title, tender number, or ZPPA resource ID. Open the tender that looks relevant.</p>
+    <a href="{% url 'tenders:list' %}?period=closing_30">View closing tenders</a>
+  </div>
+  <div class="instruction-card">
+    <span>3</span>
+    <h2>Upload company documents</h2>
+    <p>Add PACRA, TPIN, ZRA Tax Clearance, NAPSA, Workers Compensation, ZPPA, NCC, ERB/EIZ, bank letters, company profiles, and past contracts.</p>
+    <a href="{% url 'documents:create' %}">Upload document</a>
+  </div>
+  <div class="instruction-card">
+    <span>4</span>
+    <h2>Check company readiness</h2>
+    <p>Open Companies to see readiness scores, missing fields, expired documents, and document gaps before deciding which company should bid.</p>
+    <a href="{% url 'companies:list' %}">Open companies</a>
+  </div>
+  <div class="instruction-card">
+    <span>5</span>
+    <h2>Match companies to tender</h2>
+    <p>On the tender page, click <strong>Should we bid?</strong>. TenderAI compares the tender requirements against each company and recommends the best option.</p>
+    <a href="{% url 'tenders:list' %}">Choose tender</a>
+  </div>
+  <div class="instruction-card">
+    <span>6</span>
+    <h2>Upload solicitation document</h2>
+    <p>On a tender page, open the <strong>TenderAI</strong> tab and upload the PDF/DOCX solicitation document. TenderAI extracts text and creates requirement signals.</p>
+    <a href="{% url 'tenders:list' %}">Open tender page</a>
+  </div>
+  <div class="instruction-card">
+    <span>7</span>
+    <h2>Ask TenderAI questions</h2>
+    <p>Use the quick questions to ask what documents are required, what can disqualify you, important dates, and required forms.</p>
+    <a href="{% url 'tenders:list' %}">Use TenderAI chat</a>
+  </div>
+  <div class="instruction-card">
+    <span>8</span>
+    <h2>Create and download bid pack</h2>
+    <p>From Company Match, click <strong>Create bid pack</strong>, review readiness, then generate DOCX/PDF. The pack includes checklist, profile, forms, and certificate attachments.</p>
+    <a href="{% url 'bid_generator:list' %}">Open bid packs</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="section-panel h-100">
+      <h2 class="h5">Daily routine</h2>
+      <ol class="instruction-list">
+        <li>Start TenderAI from the desktop shortcut.</li>
+        <li>Click <strong>Scrape ZPPA today</strong>.</li>
+        <li>Review alerts for closing tenders and expiring documents.</li>
+        <li>Open promising tenders and run company matching.</li>
+        <li>Fix missing documents before generating a bid pack.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="section-panel h-100">
+      <h2 class="h5">Important notes</h2>
+      <ul class="instruction-list">
+        <li>TenderAI only scrapes public ZPPA tender pages.</li>
+        <li>It does not bypass logins or protected pages.</li>
+        <li>Rule-based AI analysis should be checked against the original solicitation document.</li>
+        <li>Always confirm deadlines, bid security, site visits, and mandatory forms before submission.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

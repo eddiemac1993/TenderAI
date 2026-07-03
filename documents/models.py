@@ -18,8 +18,14 @@ class CompanyDocument(models.Model):
         NCC_E = 'NCC_E', 'NCC E'
         ERB = 'ERB', 'ERB Registration / Licence'
         EIZ_CERTIFICATE = 'EIZ_CERTIFICATE', 'EIZ Certificate'
+        ZEMA_LICENSE = 'ZEMA_LICENSE', 'ZEMA / Environmental Compliance'
+        ROADWORTHINESS = 'ROADWORTHINESS', 'Roadworthiness / Vehicle Compliance'
         ZPPA_REGISTRATION = 'ZPPA_REGISTRATION', 'ZPPA Registration'
         BANK_CONFIRMATION = 'BANK_CONFIRMATION', 'Bank Confirmation Letter'
+        AUDITED_FINANCIALS = 'AUDITED_FINANCIALS', 'Audited Financial Statements'
+        DELIVERY_EVIDENCE = 'DELIVERY_EVIDENCE', 'Delivery Notes / LPO / GRN / Award Letters'
+        TRAINING_PROGRAMME = 'TRAINING_PROGRAMME', 'Training Programme Evidence'
+        WARRANTY_UNDERTAKING = 'WARRANTY_UNDERTAKING', 'Warranty / Undertaking Letter'
         PAST_CONTRACT = 'PAST_CONTRACT', 'Past Contract'
         COMPANY_PROFILE = 'COMPANY_PROFILE', 'Company Profile'
         OTHER = 'OTHER', 'Other'
@@ -43,6 +49,41 @@ class CompanyDocument(models.Model):
     @property
     def is_expired(self):
         return bool(self.expiry_date and self.expiry_date < timezone.localdate())
+
+    @property
+    def days_until_expiry(self):
+        if not self.expiry_date:
+            return None
+        return (self.expiry_date - timezone.localdate()).days
+
+    @property
+    def is_expiring_soon(self):
+        days = self.days_until_expiry
+        return days is not None and 0 <= days <= 30
+
+    @property
+    def status_label(self):
+        days = self.days_until_expiry
+        if days is None:
+            return 'No expiry'
+        if days < 0:
+            return 'Expired'
+        if days == 0:
+            return 'Expires today'
+        if days <= 30:
+            return f'Expires in {days} day(s)'
+        return 'Ready'
+
+    @property
+    def status_class(self):
+        days = self.days_until_expiry
+        if days is None:
+            return 'secondary'
+        if days < 0:
+            return 'danger'
+        if days <= 30:
+            return 'warning'
+        return 'success'
 
     def get_absolute_url(self):
         return reverse('documents:detail', args=[self.pk])

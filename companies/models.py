@@ -14,7 +14,8 @@ class BusinessCategory(models.Model):
 
 
 class Company(models.Model):
-    name = models.CharField(max_length=180, unique=True)
+    organization = models.ForeignKey('core.Organization', on_delete=models.PROTECT, related_name='companies', null=True, blank=True)
+    name = models.CharField(max_length=180)
     tpin = models.CharField('TPIN', max_length=50, blank=True)
     registration_number = models.CharField(max_length=80, blank=True)
     address = models.TextField(blank=True)
@@ -29,6 +30,9 @@ class Company(models.Model):
     class Meta:
         ordering = ['name']
         verbose_name_plural = 'companies'
+        constraints = [
+            models.UniqueConstraint(fields=['organization', 'name'], name='unique_company_name_per_organization'),
+        ]
 
     def __str__(self):
         return self.name

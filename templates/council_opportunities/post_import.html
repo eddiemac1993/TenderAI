@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Import Facebook Post | TenderAI{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">Council opportunity</div>
+    <h1 class="h3 mb-1">Import Facebook Post</h1>
+    <p class="text-muted mb-0">Paste a public council post, video, or live recording URL. TenderAI will only save it when opportunity keywords are found.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'council_opportunities:list' %}">Back</a>
+</div>
+
+<form method="post" class="card card-body app-form">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.council_page.id_for_label }}">Council</label>
+    {{ form.council_page }}
+    {{ form.council_page.errors }}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.post_url.id_for_label }}">Public Facebook post/reel/video URL</label>
+    {{ form.post_url }}
+    {{ form.post_url.errors }}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.post_text.id_for_label }}">Post text or caption</label>
+    {{ form.post_text }}
+    {{ form.post_text.errors }}
+    <div class="form-text">Use this when Facebook shows the post to you in the browser but hides the caption from the importer.</div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Import Post</button>
+    <a class="btn btn-outline-secondary" href="{% url 'council_opportunities:list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

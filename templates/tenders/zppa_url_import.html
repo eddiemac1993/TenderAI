@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading mb-4">
+  <div>
+    <p class="eyebrow mb-1">One URL workflow</p>
+    <h1 class="h3 mb-1">Find tender by ZPPA URL</h1>
+    <p class="text-muted mb-0">Paste a public ZPPA tender link. TenderAI will import the tender details and fetch public documents/XML where available.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'tenders:list' %}">Back to tenders</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <form method="post" class="section-panel">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.url.id_for_label }}">{{ form.url.label }}</label>
+        {{ form.url }}
+        <div class="form-text">{{ form.url.help_text }}</div>
+        {% if form.url.errors %}<div class="text-danger small mt-1">{{ form.url.errors|join:", " }}</div>{% endif %}
+      </div>
+      <div class="form-check mb-4">
+        {{ form.fetch_documents }}
+        <label class="form-check-label" for="{{ form.fetch_documents.id_for_label }}">{{ form.fetch_documents.label }}</label>
+      </div>
+      <button class="btn btn-primary" type="submit">Find and prepare tender</button>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="section-panel h-100">
+      <h2 class="h5">What happens next</h2>
+      <ol class="instruction-list">
+        <li>TenderAI reads the public ZPPA tender detail page.</li>
+        <li>It creates or updates the tender in your local database.</li>
+        <li>If public documents are available, it downloads supported PDF/DOCX/XML files.</li>
+        <li>The XML/solicitation is analyzed and the tender workspace opens.</li>
+      </ol>
+      <div class="alert alert-info mb-0">
+        TenderAI will not bypass login, payment, or protected ZPPA pages. If a document is not public, import the tender first and upload the file manually after you obtain it.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

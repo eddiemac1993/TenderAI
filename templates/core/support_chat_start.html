@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading mb-4">
+  <div>
+    <p class="eyebrow mb-1">TenderAI support</p>
+    <h1 class="h3 mb-1">Ask the app assistant</h1>
+    <p class="text-muted mb-0">Ask how to use TenderAI. The admin can review questions and add clarification when needed.</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{% url 'core:support_chat_admin' %}">Admin review</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <form method="post" class="section-panel">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="{{ form.user_name.id_for_label }}">{{ form.user_name.label }}</label>
+          {{ form.user_name }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ form.user_email.id_for_label }}">{{ form.user_email.label }}</label>
+          {{ form.user_email }}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ form.question.id_for_label }}">{{ form.question.label }}</label>
+          {{ form.question }}
+          {% if form.question.errors %}<div class="text-danger small mt-1">{{ form.question.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+      <button class="btn btn-primary mt-3" type="submit">Ask TenderAI</button>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="section-panel h-100">
+      <h2 class="h5">Good questions to ask</h2>
+      <div class="quick-question-bar">
+        <span class="badge text-bg-light border">How do I import by ZPPA URL?</span>
+        <span class="badge text-bg-light border">How do I upload certificates?</span>
+        <span class="badge text-bg-light border">How do I generate bid documents?</span>
+        <span class="badge text-bg-light border">Why is scraping blocked online?</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

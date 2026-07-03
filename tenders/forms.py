@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Tender, TenderRequirement
+from .models import BidTask, Tender, TenderRequirement
 
 
 class TenderForm(forms.ModelForm):
@@ -40,6 +40,23 @@ class TenderRequirementForm(forms.ModelForm):
                 field.widget.attrs.setdefault('class', 'form-control')
 
 
+class BidTaskForm(forms.ModelForm):
+    class Meta:
+        model = BidTask
+        fields = ['title', 'description', 'status', 'priority', 'due_date', 'notes']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 2}),
+            'due_date': forms.DateInput(attrs={'type': 'date'}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            css_class = 'form-select' if isinstance(field.widget, forms.Select) else 'form-control'
+            field.widget.attrs.setdefault('class', css_class)
+
+
 class ZppaManualImportForm(forms.Form):
     title = forms.CharField(max_length=240)
     tender_number = forms.CharField(max_length=120, required=False)
@@ -61,3 +78,21 @@ class ZppaJsonImportForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['file'].widget.attrs.setdefault('class', 'form-control')
+
+
+class ZppaUrlImportForm(forms.Form):
+    url = forms.URLField(
+        label='ZPPA tender URL',
+        help_text='Paste a public ZPPA tender page URL containing resourceId.',
+        widget=forms.URLInput(attrs={'placeholder': 'https://eprocure.zppa.org.zm/epps/cft/prepareViewCfTWS.do?resourceId=...'}),
+    )
+    fetch_documents = forms.BooleanField(
+        label='Fetch public solicitation/XML documents after import',
+        required=False,
+        initial=True,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['url'].widget.attrs.setdefault('class', 'form-control')
+        self.fields['fetch_documents'].widget.attrs.setdefault('class', 'form-check-input')

@@ -3,7 +3,13 @@
 <h1 class="h3 mb-3">Import ZPPA JSON export</h1>
 <p class="text-muted">Use this when the hosted server cannot scrape ZPPA directly. Run the export command locally, then upload the JSON here.</p>
 <div class="card card-body mb-3">
-  <code>python manage.py export_zppa_public_tenders zppa_today.json --today --limit 10</code>
+  <h2 class="h5">Recommended workflow</h2>
+  <ol class="mb-3">
+    <li>On your computer, run the public ZPPA export command.</li>
+    <li>Upload the generated <strong>zppa_today.json</strong> file here.</li>
+    <li>Open the tender list and use the Open Bidding National or Simplified Bidding filters.</li>
+  </ol>
+  <code>python manage.py export_zppa_public_tenders zppa_today.json --today --limit 50</code>
 </div>
 <form method="post" enctype="multipart/form-data" class="app-card app-form">
   {% csrf_token %}

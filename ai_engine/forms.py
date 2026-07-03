@@ -11,6 +11,7 @@ class SolicitationDocumentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['file'].widget.attrs.setdefault('class', 'form-control')
+        self.fields['file'].widget.attrs.setdefault('accept', '.pdf,.docx,.xml,.txt')
 
 
 class TenderChatForm(forms.Form):
@@ -19,8 +20,8 @@ class TenderChatForm(forms.Form):
         widget=forms.Textarea(
             attrs={
                 'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Example: What documents are required, and what should I do next?',
+                'rows': 4,
+                'placeholder': 'Ask about requirements, forms, deadlines, bid security, submission address, or disqualification risks...',
             }
         ),
     )

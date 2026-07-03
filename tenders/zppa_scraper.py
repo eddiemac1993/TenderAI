@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -28,6 +29,8 @@ class ScrapedTender:
     closing_at: datetime | None = None
     submission_method: str = ''
     procurement_method: str = ''
+    participation_fee: Decimal | None = None
+    bid_security_amount: Decimal | None = None
     detail_rows: list | None = None
 
 
@@ -164,6 +167,12 @@ class PublicZppaTenderScraper:
         tender.closing_at = self.parse_zppa_datetime(values.get('Deadline for Bid Submission'))
         tender.submission_method = values.get('Submission Method Details') or tender.submission_method
         tender.procurement_method = values.get('Procedure') or tender.procurement_method
+        tender.participation_fee = self.parse_money(
+            values.get('Payment Amount (ZMW)') or values.get('Participation Fee') or values.get('Payment Amount')
+        )
+        tender.bid_security_amount = self.parse_money(
+            values.get('Bid Security Amount') or values.get('Bid Security Amount (ZMW)')
+        )
         return tender
 
     def parse_detail_values(self, html, base_url=None):
@@ -223,6 +232,17 @@ class PublicZppaTenderScraper:
             return None
         return timezone.make_aware(parsed, timezone.get_current_timezone())
 
+    def parse_money(self, value):
+        if not value:
+            return None
+        cleaned = re.sub(r'[^\d.]', '', str(value))
+        if not cleaned:
+            return None
+        try:
+            return Decimal(cleaned)
+        except InvalidOperation:
+            return None
+
 
 def import_public_zppa_tenders(today_only=False, limit=10, write_log=False):
     log = ZppaScrapeLog.objects.create(today_only=today_only, limit=limit) if write_log else None
@@ -245,6 +265,8 @@ def import_public_zppa_tenders(today_only=False, limit=10, write_log=False):
             tender.closing_at = item.closing_at
             tender.submission_method = item.submission_method
             tender.procurement_method = item.procurement_method
+            tender.participation_fee = item.participation_fee
+            tender.bid_security_amount = item.bid_security_amount
             tender.zppa_details = item.detail_rows or []
             tender.imported_reference = item.url
             tender.notes = f'Imported from public ZPPA e-GP listing. Listed date: {item.listed_date or "unknown"}.'
@@ -276,3 +298,71 @@ def find_existing_tender(item):
     if item.tender_number:
         query |= Q(tender_number=item.tender_number)
     return Tender.objects.filter(query).order_by('-zppa_resource_id', 'id').first()
+
+
+def zppa_detail_value(rows, *labels):
+    wanted = {label.lower().strip(':') for label in labels}
+    for row in rows or []:
+        label = str(row.get('label', '')).lower().strip(':')
+        if label in wanted:
+            return row.get('value', '')
+    return ''
+
+
+def parse_zppa_money(value):
+    return PublicZppaTenderScraper().parse_money(value)
+
+
+def payment_amount_from_detail_rows(rows):
+    return parse_zppa_money(zppa_detail_value(
+        rows,
+        'Payment Amount (ZMW)',
+        'Payment Amount',
+        'Participation Fee',
+    ))
+
+
+def bid_security_amount_from_detail_rows(rows):
+    return parse_zppa_money(zppa_detail_value(
+        rows,
+        'Bid Security Amount',
+        'Bid Security Amount (ZMW)',
+    ))
+
+
+def import_public_zppa_tender_from_url(url):
+    scraper = PublicZppaTenderScraper(source_url=url)
+    resource_id = scraper.extract_resource_id(url)
+    if not resource_id:
+        raise ValueError('This URL does not contain a ZPPA resourceId.')
+
+    scraped = ScrapedTender(
+        listed_date=None,
+        title='ZPPA tender',
+        url=url,
+        tender_number='',
+        resource_id=resource_id,
+    )
+    scraped = scraper.enrich_from_detail_page(scraped)
+    tender = find_existing_tender(scraped)
+    created = tender is None
+    if created:
+        tender = Tender()
+    tender.title = scraped.title
+    tender.tender_number = scraped.tender_number
+    tender.zppa_resource_id = scraped.resource_id or resource_id
+    tender.procuring_entity = scraped.procuring_entity or 'ZPPA e-GP public tender'
+    tender.description = scraped.description
+    tender.source = Tender.Source.ZPPA
+    tender.closing_date = scraped.closing_at.date() if scraped.closing_at else tender.closing_date
+    tender.published_at = scraped.published_at or tender.published_at
+    tender.closing_at = scraped.closing_at or tender.closing_at
+    tender.submission_method = scraped.submission_method
+    tender.procurement_method = scraped.procurement_method
+    tender.participation_fee = scraped.participation_fee
+    tender.bid_security_amount = scraped.bid_security_amount
+    tender.zppa_details = scraped.detail_rows or tender.zppa_details or []
+    tender.imported_reference = url
+    tender.notes = 'Imported from a public ZPPA tender URL. No login-only pages accessed.'
+    tender.save()
+    return tender, created

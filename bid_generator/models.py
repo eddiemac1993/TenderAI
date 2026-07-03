@@ -15,6 +15,7 @@ class BidPack(models.Model):
     include_price_schedule = models.BooleanField(default=True)
     generated_docx = models.FileField(upload_to='bid_packs/docx/%Y/%m/', blank=True)
     generated_pdf = models.FileField(upload_to='bid_packs/pdf/%Y/%m/', blank=True)
+    generated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -23,4 +24,31 @@ class BidPack(models.Model):
     def __str__(self):
         return f'Bid pack: {self.company} - {self.tender}'
 
-# Create your models here.
+
+class BidDocument(models.Model):
+    bid_pack = models.ForeignKey(BidPack, on_delete=models.CASCADE, related_name='bid_documents')
+    envelope = models.CharField(max_length=120, blank=True)
+    requirement = models.CharField(max_length=240)
+    expected_response = models.TextField(blank=True)
+    order = models.PositiveSmallIntegerField(default=1)
+    mandatory = models.BooleanField(default=True)
+    matched_company_document = models.ForeignKey(
+        'documents.CompanyDocument',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='generated_bid_documents',
+    )
+    generated_pdf = models.FileField(upload_to='bid_documents/pdf/%Y/%m/', blank=True)
+    generated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['order', 'envelope', 'requirement']
+        unique_together = ('bid_pack', 'order', 'requirement')
+
+    def __str__(self):
+        return f'{self.bid_pack} - {self.requirement}'
+
+    @property
+    def expected_response_lines(self):
+        return [line.strip() for line in self.expected_response.splitlines() if line.strip()]

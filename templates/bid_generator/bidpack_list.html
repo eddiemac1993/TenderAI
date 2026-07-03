@@ -1,5 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3"><h1 class="h3">Bid packs</h1><a class="btn btn-primary" href="{% url 'bid_generator:create' %}">Create bid pack</a></div>
-<div class="list-group">{% for bidpack in bidpacks %}<a class="list-group-item list-group-item-action" href="{% url 'bid_generator:detail' bidpack.pk %}">{{ bidpack.company }} - {{ bidpack.tender }}</a>{% empty %}<div class="list-group-item text-muted">No bid packs.</div>{% endfor %}</div>
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+  <div>
+    <p class="eyebrow mb-1">Generated from tender detail pages</p>
+    <h1 class="h3 mb-1">Generated bid documents</h1>
+    <p class="text-muted mb-0">This is the history of bid packs created from tenders. Start new bidding work from the Tenders page.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'tenders:list' %}">Go to tenders</a>
+</div>
+
+<div class="tender-count-grid mb-4">
+  <div class="metric-card">
+    <span>Total bid packs</span>
+    <strong>{{ bidpacks|length }}</strong>
+  </div>
+  <div class="metric-card">
+    <span>Generated PDF/DOCX</span>
+    <strong>{{ generated_count }}</strong>
+  </div>
+  <div class="metric-card">
+    <span>XML documents created</span>
+    <strong>{{ xml_document_count }}</strong>
+  </div>
+</div>
+
+<div class="bidpack-grid">
+  {% for bidpack in bidpacks %}
+    <article class="bidpack-card">
+      <div class="d-flex justify-content-between gap-3 align-items-start">
+        <div>
+          <span class="document-type">{{ bidpack.company }}</span>
+          <h2 class="h5 mb-2"><a href="{% url 'bid_generator:detail' bidpack.pk %}">{{ bidpack.tender }}</a></h2>
+          <div class="text-muted small">
+            Created {{ bidpack.created_at|date:"d/m/Y H:i" }}
+            {% if bidpack.generated_at %} · Generated {{ bidpack.generated_at|date:"d/m/Y H:i" }}{% endif %}
+          </div>
+        </div>
+        {% if bidpack.generated_pdf and bidpack.generated_docx %}
+          <span class="badge text-bg-success">Generated</span>
+        {% else %}
+          <span class="badge text-bg-warning">Needs generate</span>
+        {% endif %}
+      </div>
+      <div class="d-flex gap-2 flex-wrap mt-3">
+        <span class="badge text-bg-light border">{{ bidpack.document_count }} XML document{{ bidpack.document_count|pluralize }}</span>
+        {% if bidpack.tender.closing_at %}
+          <span class="badge text-bg-light border">Closes {{ bidpack.tender.closing_at|date:"d/m/Y H:i" }}</span>
+        {% endif %}
+      </div>
+      <div class="d-flex gap-2 flex-wrap mt-3">
+        <a class="btn btn-sm btn-primary" href="{% url 'bid_generator:detail' bidpack.pk %}">Review documents</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ bidpack.tender.get_absolute_url }}">Open tender</a>
+        <a class="btn btn-sm btn-outline-success" href="{% url 'bid_generator:generate' bidpack.pk %}">Generate</a>
+        {% if bidpack.generated_pdf %}<a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download' bidpack.pk 'pdf' %}?inline=1" target="_blank" rel="noopener">PDF</a>{% endif %}
+        {% if bidpack.generated_docx %}<a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download' bidpack.pk 'docx' %}">DOCX</a>{% endif %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state app-card">No generated bid documents yet. Open a tender, choose a company, then click Generate bid documents.</div>
+  {% endfor %}
+</div>
 {% endblock %}

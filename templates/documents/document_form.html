@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+  <div>
+    <p class="eyebrow mb-1">Company documents</p>
+    <h1 class="h3 mb-1">{% if object.pk %}Edit document{% else %}Upload company document{% endif %}</h1>
+    <p class="text-muted mb-0">Keep certificates current so company matching and bid packs are accurate.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'documents:list' %}">All documents</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <form method="post" enctype="multipart/form-data" class="app-card app-form">
+      {% csrf_token %}
+      {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">{% if object.pk %}Save changes{% else %}Upload document{% endif %}</button>
+        <a class="btn btn-outline-secondary" href="{{ request.META.HTTP_REFERER|default:'/' }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+  <div class="col-lg-4">
+    {% if selected_company %}
+      <div class="section-panel mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <h2 class="h5 mb-1">{{ selected_company.name }}</h2>
+            <p class="text-muted small mb-0">Document readiness while uploading</p>
+          </div>
+          <span class="score-badge score-{% if selected_company_readiness.score >= 80 %}success{% elif selected_company_readiness.score >= 50 %}warning{% else %}danger{% endif %}">{{ selected_company_readiness.score }}%</span>
+        </div>
+        <div class="progress readiness-progress my-3">
+          <div class="progress-bar" style="width: {{ selected_company_readiness.score }}%"></div>
+        </div>
+        <div class="upload-readiness-list">
+          {% for row in selected_company_readiness.rows %}
+            <a class="upload-readiness-row {% if row.status != 'Ready' %}needs-action{% endif %}" href="{% url 'documents:create' %}?company={{ selected_company.pk }}&document_type={{ row.type }}{% if next_url %}&next={{ next_url|urlencode }}{% endif %}">
+              <span>{{ row.label }}</span>
+              <strong class="text-{{ row.badge }}">{{ row.status }}</strong>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="section-panel mb-3">
+        <h2 class="h5">Current company files</h2>
+        <div class="list-group plain-list">
+          {% for doc in selected_company_documents %}
+            <a class="list-group-item list-group-item-action" href="{{ doc.get_absolute_url }}">
+              <strong>{{ doc.get_document_type_display }}</strong>
+              <div class="small text-muted">{{ doc.title }} - {{ doc.status_label }}</div>
+            </a>
+          {% empty %}
+            <div class="empty-state">No files uploaded for this company yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <div class="section-panel mb-3">
+      <h2 class="h5">Upload tips</h2>
+      <ul class="document-tips">
+        <li>Select the correct company first.</li>
+        <li>Choose the exact document type such as ZRA, ZPPA, ERB, EIZ, or NCC B/R/E.</li>
+        <li>Leave title blank if you want TenderAI to use the document type.</li>
+        <li>Add expiry dates for certificates so TenderAI can warn you before bidding.</li>
+      </ul>
+    </div>
+    {% if existing_documents %}
+      <div class="section-panel">
+        <h2 class="h5">Existing copies</h2>
+        <p class="text-muted small">This company already has this document type.</p>
+        <div class="list-group plain-list">
+          {% for doc in existing_documents %}
+            <a class="list-group-item list-group-item-action" href="{{ doc.get_absolute_url }}">
+              <strong>{{ doc.title }}</strong>
+              <div class="small {% if doc.is_expired %}text-danger{% else %}text-muted{% endif %}">Expiry: {{ doc.expiry_date|default:"No expiry" }}</div>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const typeField = document.querySelector('#id_document_type');
+  const titleField = document.querySelector('#id_title');
+  if (typeField && titleField) {
+    typeField.addEventListener('change', () => {
+      if (!titleField.value.trim()) {
+        const selected = typeField.options[typeField.selectedIndex];
+        if (selected) titleField.value = selected.text;
+      }
+    });
+  }
+</script>
+{% endblock %}

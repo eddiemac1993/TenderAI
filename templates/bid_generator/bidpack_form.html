@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+  <div>
+    <p class="eyebrow mb-1">Bid pack wizard</p>
+    <h1 class="h3 mb-1">Create bid pack</h1>
+    <p class="text-muted mb-0">Choose the tender and company, confirm the sections, then generate the final documents.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'bid_generator:list' %}">All bid packs</a>
+</div>
+
+<div class="wizard-steps mb-4">
+  <div class="wizard-step active"><span>1</span><strong>Select tender</strong></div>
+  <div class="wizard-step active"><span>2</span><strong>Choose company</strong></div>
+  <div class="wizard-step"><span>3</span><strong>Generate pack</strong></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <form method="post" class="app-card app-form">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="{{ form.tender.id_for_label }}">{{ form.tender.label }}</label>
+          {{ form.tender }}
+          {% for error in form.tender.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ form.company.id_for_label }}">{{ form.company.label }}</label>
+          {{ form.company }}
+          {% for error in form.company.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+      </div>
+
+      <div class="section-panel mt-4 shadow-none">
+        <h2 class="h5">Sections to include</h2>
+        <div class="bid-section-grid">
+          {% for field in form %}
+            {% if field.name|slice:":8" == "include_" %}
+              <label class="bid-section-option">
+                {{ field }}
+                <span>{{ field.label }}</span>
+              </label>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Create bid pack</button>
+        <a class="btn btn-outline-secondary" href="{{ request.META.HTTP_REFERER|default:'/' }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+  <div class="col-lg-4">
+    <div class="section-panel">
+      <h2 class="h5">Before generating</h2>
+      <ul class="document-tips">
+        <li>Run company matching from the tender page first.</li>
+        <li>Upload the solicitation document so requirements are ordered correctly.</li>
+        <li>Fix missing or expired certificates before final submission.</li>
+        <li>Generate PDF and DOCX only after reviewing the checklist.</li>
+      </ul>
+    </div>
+    {% if decision %}
+      <div class="decision-card decision-{{ decision.tone }} mt-3">
+        <div class="text-muted small">Current match decision</div>
+        <div class="decision-title">{{ decision.recommendation }}</div>
+        <p class="mb-0">{{ decision.next_step }}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

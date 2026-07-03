@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading mb-4">
+  <div>
+    <p class="eyebrow mb-1">Multi-team access</p>
+    <h1 class="h3 mb-1">Organizations and users</h1>
+    <p class="text-muted mb-0">Each organization has its own companies, documents, bid packs, and support chats.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if request.user.is_superuser %}
+      <a class="btn btn-outline-primary" href="{% url 'core:organization_create' %}">Add organization</a>
+    {% endif %}
+    <a class="btn btn-primary" href="{% url 'core:team_user_create' %}">Add user</a>
+  </div>
+</div>
+
+<div class="company-card-grid">
+  {% for organization in organizations %}
+    <article class="company-card">
+      <div class="d-flex justify-content-between gap-3">
+        <div>
+          <span class="document-type">{{ organization.district|default:"Organization" }}</span>
+          <h2 class="h5 mb-1">{{ organization.name }}</h2>
+          <div class="text-muted small">{{ organization.province|default:"-" }}{% if organization.contact_email %} · {{ organization.contact_email }}{% endif %}</div>
+        </div>
+        <span class="badge text-bg-{% if organization.active %}success{% else %}secondary{% endif %}">{% if organization.active %}Active{% else %}Inactive{% endif %}</span>
+      </div>
+      <div class="mt-3">
+        <strong>{{ organization.members.count }}</strong> user{{ organization.members.count|pluralize }}
+      </div>
+      <div class="mt-3">
+        {% for profile in organization.members.all %}
+          <span class="badge text-bg-light border mb-1">{{ profile.user.username }} - {{ profile.get_role_display }}</span>
+        {% empty %}
+          <span class="text-muted small">No users yet.</span>
+        {% endfor %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state app-card">No organizations yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

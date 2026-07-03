@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Council Opportunities | TenderAI{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">Public council notices</div>
+    <h1 class="h3 mb-1">Council Opportunities</h1>
+    <p class="text-muted mb-0">Latest public council posts matching CDF, tenders, RFQs, procurement, grants, bursaries, youth and women opportunities.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end">
+    {% if latest_run %}
+      <span class="badge text-bg-light border align-self-center">Last scrape: {{ latest_run.started_at|date:"d M Y H:i" }} - {{ latest_run.get_status_display }}</span>
+    {% endif %}
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'council_opportunities:page_create' %}">Add Council Page</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'council_opportunities:post_import' %}">Import Facebook Post</a>
+    <form method="post" action="{% url 'council_opportunities:scrape_now' %}">
+      {% csrf_token %}
+      <button class="btn btn-primary btn-sm" type="submit">Scrape Now</button>
+    </form>
+  </div>
+</div>
+
+<div class="tender-count-grid mb-3">
+  <a class="count-tile text-decoration-none" href="{% url 'council_opportunities:page_list' %}">
+    <span>Councils seeded</span>
+    <strong>{{ coverage.total_councils }}</strong>
+  </a>
+  <a class="count-tile text-decoration-none" href="{% url 'council_opportunities:page_list' %}?status=with_url">
+    <span>With Facebook URLs</span>
+    <strong>{{ coverage.councils_with_urls }}</strong>
+  </a>
+  <a class="count-tile text-decoration-none" href="{% url 'council_opportunities:page_list' %}?status=missing_url">
+    <span>Still need URLs</span>
+    <strong>{{ coverage.councils_missing_urls }}</strong>
+  </a>
+  <div class="count-tile">
+    <span>Captured posts</span>
+    <strong>{{ coverage.captured_posts }}</strong>
+  </div>
+</div>
+
+<form method="get" class="section-panel tender-search-panel mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label" for="q">Search</label>
+      <input class="form-control" id="q" name="q" value="{{ filters.q }}" placeholder="Search post, council, district">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="province">Province</label>
+      <select class="form-select" id="province" name="province">
+        <option value="">All provinces</option>
+        {% for province in provinces %}
+          <option value="{{ province }}" {% if filters.province == province %}selected{% endif %}>{{ province }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="council">Council</label>
+      <select class="form-select" id="council" name="council">
+        <option value="">All councils</option>
+        {% for council in councils %}
+          <option value="{{ council.id }}" {% if filters.council == council.id|stringformat:"s" %}selected{% endif %}>{{ council.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="category">Category</label>
+      <select class="form-select" id="category" name="category">
+        <option value="">All categories</option>
+        {% for value,label in categories %}
+          <option value="{{ value }}" {% if filters.category == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="keyword">Keyword</label>
+      <select class="form-select" id="keyword" name="keyword">
+        <option value="">Any keyword</option>
+        {% for keyword in keywords %}
+          <option value="{{ keyword }}" {% if filters.keyword == keyword %}selected{% endif %}>{{ keyword }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="period">Period</label>
+      <select class="form-select" id="period" name="period">
+        {% for value,label in period_options %}
+          <option value="{{ value }}" {% if filters.period == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1 d-grid">
+      <button class="btn btn-primary" type="submit">Filter</button>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="date_from">From</label>
+      <input class="form-control" id="date_from" name="date_from" type="date" value="{{ filters.date_from }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="date_to">To</label>
+      <input class="form-control" id="date_to" name="date_to" type="date" value="{{ filters.date_to }}">
+    </div>
+    <div class="col-md-2 d-grid">
+      <a class="btn btn-outline-secondary" href="{% url 'council_opportunities:list' %}">Clear filters</a>
+    </div>
+  </div>
+</form>
+
+<div class="tender-card-list">
+  {% for post in posts %}
+    <article class="tender-result-card">
+      <div class="tender-result-main">
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <span class="badge text-bg-primary">{{ post.category }}</span>
+          {% if post.detected_deadline %}
+            <span class="badge text-bg-warning">Deadline: {{ post.detected_deadline|date:"d M Y" }}</span>
+          {% endif %}
+          {% for keyword in post.matched_keywords %}
+            <span class="badge text-bg-light border">{{ keyword }}</span>
+          {% endfor %}
+        </div>
+        <h2 class="h5 mb-2">{{ post.council_page.name }}</h2>
+        <p class="mb-2">{{ post.post_text|truncatewords:55 }}</p>
+        <div class="tender-meta">
+          <span>{{ post.council_page.district|default:"District not set" }}</span>
+          <span>{{ post.council_page.province|default:"Province not set" }}</span>
+          <span>Posted: {{ post.date_posted|date:"d M Y H:i"|default:"Unknown" }}</span>
+          <span>Scraped: {{ post.date_scraped|date:"d M Y H:i" }}</span>
+        </div>
+      </div>
+      <div class="tender-result-actions">
+        {% if post.attachment_url %}
+          <a class="btn btn-outline-secondary btn-sm" href="{{ post.attachment_url }}" target="_blank" rel="noopener">Attachment</a>
+        {% endif %}
+        <a class="btn btn-primary btn-sm" href="{{ post.post_url }}" target="_blank" rel="noopener">View Original Post</a>
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state">
+      <h2 class="h5">No council opportunities found yet</h2>
+      <p class="mb-3">Add one or more public council Facebook pages, then click <strong>Scrape Now</strong>. If you already have a specific public post or video link, use <strong>Import Facebook Post</strong>.</p>
+      <a class="btn btn-primary btn-sm" href="{% url 'council_opportunities:page_create' %}">Add Council Page</a>
+      <a class="btn btn-outline-primary btn-sm" href="{% url 'council_opportunities:post_import' %}">Import Facebook Post</a>
+    </div>
+  {% endfor %}
+</div>
+
+{% if is_paginated %}
+  <nav class="mt-3" aria-label="Council opportunity pages">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ filters.q }}&province={{ filters.province }}&council={{ filters.council }}&category={{ filters.category }}&keyword={{ filters.keyword }}&period={{ filters.period }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}">Previous</a></li>
+      {% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ filters.q }}&province={{ filters.province }}&council={{ filters.council }}&category={{ filters.category }}&keyword={{ filters.keyword }}&period={{ filters.period }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}">Next</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+{% endif %}
+{% endblock %}

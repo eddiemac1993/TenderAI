@@ -31,6 +31,9 @@ class Tender(models.Model):
     published_at = models.DateTimeField(null=True, blank=True)
     closing_at = models.DateTimeField(null=True, blank=True)
     submission_method = models.CharField(max_length=180, blank=True)
+    clarification_address = models.TextField(blank=True)
+    submission_address = models.TextField(blank=True)
+    itb_11_items = models.JSONField(default=list, blank=True)
     procurement_method = models.CharField(max_length=180, blank=True)
     zppa_details = models.JSONField(default=list, blank=True)
     bid_security_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
@@ -51,7 +54,49 @@ class Tender(models.Model):
 
     @property
     def is_closed(self):
-        return bool(self.closing_date and self.closing_date < timezone.localdate())
+        deadline = self.deadline_date
+        return bool(deadline and deadline < timezone.localdate())
+
+    @property
+    def deadline_date(self):
+        if self.closing_at:
+            return self.closing_at.date()
+        return self.closing_date
+
+    @property
+    def days_until_deadline(self):
+        deadline = self.deadline_date
+        if not deadline:
+            return None
+        return (deadline - timezone.localdate()).days
+
+    @property
+    def urgency_label(self):
+        days = self.days_until_deadline
+        if days is None:
+            return 'No deadline'
+        if days < 0:
+            return 'Closed'
+        if days == 0:
+            return 'Closing today'
+        if days <= 3:
+            return f'{days} day(s) left'
+        if days <= 7:
+            return 'Closing this week'
+        return 'Open'
+
+    @property
+    def urgency_class(self):
+        days = self.days_until_deadline
+        if days is None:
+            return 'secondary'
+        if days < 0:
+            return 'dark'
+        if days <= 3:
+            return 'danger'
+        if days <= 7:
+            return 'warning'
+        return 'success'
 
     def get_absolute_url(self):
         return reverse('tenders:detail', args=[self.pk])
@@ -96,6 +141,60 @@ class TenderMatch(models.Model):
 
     def __str__(self):
         return f'{self.company} match for {self.tender}: {self.score}%'
+
+
+class BidTask(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        DONE = 'DONE', 'Done'
+        BLOCKED = 'BLOCKED', 'Blocked'
+
+    class Priority(models.TextChoices):
+        HIGH = 'HIGH', 'High'
+        MEDIUM = 'MEDIUM', 'Medium'
+        LOW = 'LOW', 'Low'
+
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name='bid_tasks')
+    title = models.CharField(max_length=180)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
+    due_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'status', 'due_date', 'title']
+        unique_together = ('tender', 'title')
+
+    def __str__(self):
+        return f'{self.tender} - {self.title}'
+
+    @property
+    def is_done(self):
+        return self.status == self.Status.DONE
+
+    @property
+    def is_blocked(self):
+        return self.status == self.Status.BLOCKED
+
+    @property
+    def status_class(self):
+        if self.status == self.Status.DONE:
+            return 'success'
+        if self.status == self.Status.BLOCKED:
+            return 'danger'
+        return 'warning'
+
+    @property
+    def priority_class(self):
+        if self.priority == self.Priority.HIGH:
+            return 'danger'
+        if self.priority == self.Priority.LOW:
+            return 'secondary'
+        return 'warning'
 
 
 class ZppaScrapeLog(models.Model):

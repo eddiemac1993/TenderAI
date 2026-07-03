@@ -14,8 +14,13 @@ class CompanyDocumentForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Optional notes'}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if user and not user.is_superuser:
+            from core.tenancy import user_organization
+
+            organization = user_organization(user)
+            self.fields['company'].queryset = self.fields['company'].queryset.filter(organization=organization)
         self.fields['title'].required = False
         self.fields['title'].help_text = 'Optional. If blank, TenderAI will use the selected document type.'
         self.fields['notes'].required = False

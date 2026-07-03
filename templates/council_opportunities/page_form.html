@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Add Council Page | TenderAI{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">Council source</div>
+    <h1 class="h3 mb-1">Add Council Facebook Page</h1>
+    <p class="text-muted mb-0">Add public council pages only. TenderAI will not access private groups, personal profiles, or login-only content.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'council_opportunities:list' %}">Back</a>
+</div>
+
+<form method="post" class="card card-body app-form">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.name.id_for_label }}">Council name</label>
+    {{ form.name }}
+    {{ form.name.errors }}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.facebook_url.id_for_label }}">Facebook page URL</label>
+    {{ form.facebook_url }}
+    {{ form.facebook_url.errors }}
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label" for="{{ form.district.id_for_label }}">District</label>
+      {{ form.district }}
+      {{ form.district.errors }}
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ form.province.id_for_label }}">Province</label>
+      {{ form.province }}
+      {{ form.province.errors }}
+    </div>
+  </div>
+  <div class="form-check mt-3">
+    {{ form.is_active }}
+    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active for scraping</label>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Save Council Page</button>
+    <a class="btn btn-outline-secondary" href="{% url 'council_opportunities:list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

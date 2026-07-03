@@ -16,12 +16,17 @@ class BootstrapFormMixin:
 class CompanyForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Company
-        fields = ['name', 'tpin', 'registration_number', 'address', 'phone', 'email', 'website', 'profile_summary', 'business_categories']
+        fields = ['organization', 'name', 'tpin', 'registration_number', 'address', 'phone', 'email', 'website', 'profile_summary', 'business_categories']
         widgets = {
             'address': forms.Textarea(attrs={'rows': 3}),
             'profile_summary': forms.Textarea(attrs={'rows': 4}),
             'business_categories': forms.CheckboxSelectMultiple,
         }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not user or not user.is_superuser:
+            self.fields.pop('organization', None)
 
 
 class DirectorForm(BootstrapFormMixin, forms.ModelForm):
