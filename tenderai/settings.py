@@ -77,6 +77,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.tenderai_alerts',
                 'core.context_processors.tenderai_updates',
+                'core.context_processors.tenderai_user_context',
             ],
         },
     },

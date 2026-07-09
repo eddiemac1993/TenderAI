@@ -391,6 +391,16 @@
                   <span class="fw-semibold">Required docs:</span>
                   {{ document.analysis_summary.required_documents|join:", "|default:"None found yet" }}
                 </div>
+                {% if document.analysis_summary.extracted_form_templates %}
+                  <div class="small mt-2">
+                    <span class="fw-semibold">Exact form templates found:</span>
+                    <div class="d-flex gap-1 flex-wrap mt-1">
+                      {% for form_template in document.analysis_summary.extracted_form_templates %}
+                        <span class="badge text-bg-light border">{{ form_template.code }} - {{ form_template.title }}</span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
               </div>
             {% empty %}
               <div class="empty-state">No solicitation document uploaded yet. Upload first so the chat can answer from the tender document.</div>

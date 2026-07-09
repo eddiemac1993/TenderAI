@@ -281,26 +281,80 @@ def has_xml_bid_structure(bid_pack):
 def table_of_contents(bid_pack=None):
     has_xml = bool(bid_pack and has_xml_bid_structure(bid_pack))
     sections = [
-        'Tender Summary',
-        'Submission Gaps',
-        'XML Structured Bid Response' if has_xml else 'ITB Ordered Bid Checklist',
-        'Cover Letter',
-        'Form of Bid / Tender Submission Letter',
-        'Required Forms',
-        'Bid Checklist',
+        'Tender and Bidder Information',
+        'Submission Readiness Gaps',
+        'Documents Comprising the Bid',
+        'Solicitation Forms and Statements',
+        'Proof Documents / Eligibility Evidence',
+        'Qualification Schedules',
+        'Technical Response',
+        'Commercial Offer / Price Schedule',
         'Company Profile Summary',
-        'Price Schedule',
-        'Company Document Checklist',
-        'Similar Experience Table',
-        'Litigation Declaration',
-        'Power of Attorney',
-        'Delivery Period Confirmation',
-        'Warranty / Undertaking Letter',
-        'Signature Section',
+        'Final Signature Section',
     ]
-    if bid_pack and bid_pack.tender.requirements.exists():
+    if has_xml:
+        sections.insert(4, 'XML Envelope Submission Order')
+    if bid_pack and ordered_certificate_documents(bid_pack):
         sections.append('Attached Company Certificates')
     return sections
+
+
+def submission_order_rows(bid_pack):
+    rows = []
+    if has_xml_bid_structure(bid_pack):
+        for group in xml_bid_structure_groups(bid_pack):
+            for item in group['items']:
+                response_lines = xml_response_lines(item)
+                rows.append({
+                    'order': item.get('order') or len(rows) + 1,
+                    'envelope': group['title'],
+                    'requirement': item.get('requirement') or item.get('title') or 'Bid requirement',
+                    'response': '; '.join(response_lines[:3]) if response_lines else 'Complete / attach as required',
+                    'prepared_as': prepared_output_for_xml_item(bid_pack, item),
+                    'mandatory': bool(item.get('mandatory')),
+                })
+        return rows
+
+    for reference, required_item, output, status in ordered_itb_rows(bid_pack):
+        rows.append({
+            'order': reference,
+            'envelope': 'ITB checklist',
+            'requirement': required_item,
+            'response': status,
+            'prepared_as': output,
+            'mandatory': True,
+        })
+    return rows
+
+
+def xml_response_lines(item):
+    lines = [line.strip() for line in item.get('response_items') or [] if str(line).strip()]
+    if not lines and item.get('response'):
+        lines = [line.strip() for line in str(item.get('response')).split(';') if line.strip()]
+    return lines
+
+
+def prepared_output_for_xml_item(bid_pack, item):
+    text = normalize_match_text(' '.join([
+        str(item.get('requirement', '')),
+        str(item.get('response', '')),
+        ' '.join(item.get('response_items') or []),
+    ]))
+    form_code = qualification_form_code_for_text(text)
+    if 'bid declaration' in text or 'bid securing' in text or 'bid security' in text:
+        return 'Bid-Securing Declaration form'
+    if 'bid submission form' in text or 'letter of bid' in text or 'form of bid' in text:
+        return 'Letter of Bid / Tender Submission Letter'
+    if form_code:
+        return f'Qualification form {form_code}'
+    matched_document = match_company_document_for_xml_item(bid_pack, item)
+    if matched_document:
+        return f'Attach {matched_document.get_document_type_display()}'
+    if any(word in text for word in ['technical', 'specification', 'compliance', 'capacity']):
+        return 'Technical response schedule'
+    if any(word in text for word in ['price', 'commercial', 'payment', 'warranty', 'delivery']):
+        return 'Commercial / undertaking schedule'
+    return 'Prepared response form'
 
 
 def submission_gap_rows(bid_pack):
@@ -552,11 +606,11 @@ def add_pdf_required_form_tables(elements, bid_pack, style):
         if 'headers' in spec:
             rows = [spec['headers'], *spec['rows']]
             col_width = 475 / len(spec['headers'])
-            elements.append(Table(rows, colWidths=[col_width] * len(spec['headers']), style=table_style()))
+            elements.append(Table(rows, colWidths=[col_width] * len(spec['headers']), style=form_table_style()))
         else:
             rows = [['Field', 'TenderAI filled value']]
             rows.extend([[field, Paragraph(str(value), style['BodyText'])] for field, value in spec['rows']])
-            elements.append(Table(rows, colWidths=[150, 325], style=table_style()))
+            elements.append(Table(rows, colWidths=[150, 325], style=form_table_style()))
         elements.append(Spacer(1, 10))
 
 
@@ -634,13 +688,14 @@ def letter_of_bid_declarations(context):
         'We have paid, or will pay, no commissions, gratuities, or fees with respect to the bidding process or execution of the Contract unless disclosed below.',
         'We understand that this bid, together with your written acceptance included in your notification of award, shall constitute a binding contract between us until a formal contract is prepared and executed.',
         'We understand that you are not bound to accept the best-evaluated bid or any other bid that you may receive.',
-        f'If awarded the contract, the person named below shall act as Contractor’s Representative: {context["representative"]}.',
+        f'If awarded the contract, the person named below shall act as Contractor Representative: {context["representative"]}.',
     ]
 
 
 def add_pdf_letter_of_bid(elements, bid_pack, style):
     context = letter_of_bid_context(bid_pack)
-    elements.append(Paragraph('The Bidder should prepare this Letter of Bid on company letterhead showing the complete name and address.', style['SmallMuted']))
+    elements.append(Paragraph('LETTER OF BID', style['FormTitle']))
+    elements.append(Paragraph('The Bidder should prepare this Letter of Bid on company letterhead showing the complete name and address.', style['FormInstruction']))
     elements.append(Spacer(1, 6))
     rows = [
         ['Date', context['date']],
@@ -649,7 +704,7 @@ def add_pdf_letter_of_bid(elements, bid_pack, style):
         ['To', context['to']],
         ['Bidder', context['company']],
     ]
-    elements.append(Table(rows, colWidths=[145, 330], style=table_style()))
+    elements.append(Table(rows, colWidths=[145, 330], style=form_table_style()))
     elements.append(Spacer(1, 8))
     elements.append(Paragraph('We, the undersigned, declare that:', style['BodyText']))
     for index, declaration in enumerate(letter_of_bid_declarations(context), start=1):
@@ -660,7 +715,7 @@ def add_pdf_letter_of_bid(elements, bid_pack, style):
         ['Name of Recipient', 'Address', 'Reason', 'Amount'],
         ['None', '-', '-', '-'],
     ]
-    elements.append(Table(commission_rows, colWidths=[130, 130, 130, 85], style=table_style()))
+    elements.append(Table(commission_rows, colWidths=[130, 130, 130, 85], style=form_table_style()))
     elements.append(Spacer(1, 8))
     signature_rows = [
         ['Name', 'To be completed'],
@@ -669,7 +724,7 @@ def add_pdf_letter_of_bid(elements, bid_pack, style):
         ['Duly authorized to sign the Bid for and on behalf of', context['company']],
         ['Date', context['date']],
     ]
-    elements.append(Table(signature_rows, colWidths=[210, 265], style=table_style()))
+    elements.append(Table(signature_rows, colWidths=[210, 265], style=form_table_style()))
 
 
 def add_docx_letter_of_bid(document, bid_pack):
@@ -743,12 +798,10 @@ def bid_securing_declaration_paragraphs(context):
 
 def add_pdf_bid_securing_declaration(elements, bid_pack, style):
     context = bid_securing_declaration_context(bid_pack)
-    title_style = style['Heading2'].clone('BidSecuringTitle')
-    title_style.alignment = 1
-    elements.append(Paragraph('FORM V', title_style))
-    elements.append(Paragraph('Reg 88 (2)', title_style))
-    elements.append(Paragraph('BID-SECURING DECLARATION', title_style))
-    elements.append(Paragraph('The Bidder shall fill in this Form in accordance with the instructions indicated.', style['SmallMuted']))
+    elements.append(Paragraph('FORM V', style['FormTitle']))
+    elements.append(Paragraph('Reg 88 (2)', style['FormTitle']))
+    elements.append(Paragraph('BID-SECURING DECLARATION', style['FormTitle']))
+    elements.append(Paragraph('The Bidder shall fill in this Form in accordance with the instructions indicated.', style['FormInstruction']))
     elements.append(Spacer(1, 8))
     rows = [
         ['Date', context['date']],
@@ -757,7 +810,7 @@ def add_pdf_bid_securing_declaration(elements, bid_pack, style):
         ['Procuring Entity', context['procuring_entity']],
         ['Bidder', context['bidder']],
     ]
-    elements.append(Table(rows, colWidths=[145, 330], style=table_style()))
+    elements.append(Table(rows, colWidths=[145, 330], style=form_table_style()))
     elements.append(Spacer(1, 10))
     elements.append(Paragraph('We, the undersigned, declare that:', style['BodyText']))
     for paragraph in bid_securing_declaration_paragraphs(context):
@@ -770,7 +823,7 @@ def add_pdf_bid_securing_declaration(elements, bid_pack, style):
         ['Duly authorised to sign the bid for and on behalf of', context['bidder']],
         ['Dated on', context['signing_date']],
     ]
-    elements.append(Table(signature_rows, colWidths=[230, 245], style=table_style()))
+    elements.append(Table(signature_rows, colWidths=[230, 245], style=form_table_style()))
 
 
 def add_docx_bid_securing_declaration(document, bid_pack):
@@ -818,7 +871,6 @@ def price_schedule_rows(bid_pack):
 def generate_bid_pack_pdf(bid_pack):
     style = styles()
     settings = SystemSettings.load()
-    currency = settings.default_currency or 'ZMW'
     elements = []
     add_pdf_cover_page(elements, bid_pack)
     elements.append(PageBreak())
@@ -827,40 +879,17 @@ def generate_bid_pack_pdf(bid_pack):
 
     sections = build_bid_sections(bid_pack)
     for number, (title, lines) in enumerate(sections, start=1):
-        if number > 1 and title in {
-            'Cover Letter',
-            'Bid Checklist',
-            'Company Document Checklist',
-            'Similar Experience Table',
-        }:
+        if number > 1:
             elements.append(PageBreak())
-        elements.append(Paragraph(f'{number}. {title}', style['SectionTitle']))
+        add_pdf_part_heading(elements, number, title, bid_pack)
         for line in lines:
             elements.append(Paragraph(str(line), style['BodyText']))
         elements.append(Spacer(1, 6))
 
-        if title == 'ITB Ordered Bid Checklist':
-            itb_rows = ordered_itb_rows(bid_pack)
-            if itb_rows:
-                rows = [['ITB Ref', 'Required Item', 'TenderAI Output', 'Status']]
-                rows.extend([
-                    [reference, Paragraph(required_item, style['BodyText']), Paragraph(output, style['BodyText']), status]
-                    for reference, required_item, output, status in itb_rows
-                ])
-                elements.append(Table(rows, colWidths=[62, 190, 160, 65], style=table_style()))
-            else:
-                rows = [['Type', 'Requirement', 'Mandatory', 'Action']]
-                rows.extend([
-                    [kind, Paragraph(description, style['BodyText']), mandatory, action]
-                    for kind, description, mandatory, action in requirements_matrix_rows(bid_pack)
-                ])
-                elements.append(Table(rows, colWidths=[95, 215, 65, 100], style=table_style()))
-            elements.append(Spacer(1, 6))
+        if title == 'Tender and Bidder Information':
+            add_pdf_tender_bidder_information(elements, bid_pack, style)
 
-        if title == 'XML Structured Bid Response':
-            add_pdf_xml_bid_structure(elements, bid_pack, style, include_heading=False)
-
-        if title == 'Submission Gaps':
+        if title == 'Submission Readiness Gaps':
             rows = [['Item', 'Status', 'Recommended action']]
             gap_rows = submission_gap_rows(bid_pack)
             if gap_rows:
@@ -870,12 +899,27 @@ def generate_bid_pack_pdf(bid_pack):
             elements.append(Table(rows, colWidths=[165, 80, 230], style=table_style()))
             elements.append(Spacer(1, 6))
 
-        if title == 'Required Forms':
+        if title == 'Documents Comprising the Bid':
+            add_pdf_documents_comprising_bid(elements, bid_pack, style)
+
+        if title == 'XML Envelope Submission Order':
+            add_pdf_xml_bid_structure(elements, bid_pack, style, include_heading=False)
+
+        if title == 'Solicitation Forms and Statements':
             add_pdf_required_form_tables(elements, bid_pack, style)
 
-        if title == 'Company Document Checklist':
+        if title == 'Proof Documents / Eligibility Evidence':
             elements.append(Table([['Document', 'Status'], *company_document_checklist(bid_pack.company)], colWidths=[260, 160], style=table_style()))
             elements.append(Spacer(1, 6))
+
+        if title == 'Qualification Schedules':
+            add_pdf_qualification_schedule_summary(elements, bid_pack, style)
+
+        if title == 'Technical Response':
+            add_pdf_envelope_response_summary(elements, bid_pack, style, 'technical')
+
+        if title == 'Commercial Offer / Price Schedule':
+            add_pdf_envelope_response_summary(elements, bid_pack, style, 'commercial')
 
     add_signature(elements, label='Authorised signatory')
     main_pdf = build_pdf_response(elements, f'Bid Pack - {bid_pack.tender.title}')
@@ -888,6 +932,7 @@ def generate_bid_pack_docx(bid_pack):
     settings = SystemSettings.load()
     currency = settings.default_currency or 'ZMW'
     document = Document()
+    apply_formal_docx_styles(document)
     add_docx_cover_page(document, bid_pack)
     document.add_page_break()
     add_docx_table_of_contents(document, bid_pack)
@@ -897,6 +942,18 @@ def generate_bid_pack_docx(bid_pack):
         document.add_heading(f'{number}. {title}', level=1)
         for line in lines:
             document.add_paragraph(docx_safe_text(line), style='List Bullet' if title.endswith('Checklist') else None)
+
+        if title == 'Documents Comprising the Bid':
+            table = document.add_table(rows=1, cols=4)
+            table.style = 'Table Grid'
+            for idx, heading in enumerate(['No.', 'Envelope / part', 'Document or requirement', 'Prepared as']):
+                table.rows[0].cells[idx].text = heading
+            for item in submission_order_rows(bid_pack):
+                cells = table.add_row().cells
+                cells[0].text = docx_safe_text(item['order'])
+                cells[1].text = docx_safe_text(item['envelope'])
+                cells[2].text = docx_safe_text(item['requirement'])
+                cells[3].text = docx_safe_text(item['prepared_as'])
 
         if title == 'ITB Ordered Bid Checklist':
             table = document.add_table(rows=1, cols=4)
@@ -912,10 +969,10 @@ def generate_bid_pack_docx(bid_pack):
                 cells[2].text = docx_safe_text(third)
                 cells[3].text = docx_safe_text(fourth)
 
-        if title == 'XML Structured Bid Response':
+        if title == 'XML Envelope Submission Order':
             add_docx_xml_bid_structure(document, bid_pack, include_heading=False)
 
-        if title == 'Submission Gaps':
+        if title == 'Submission Readiness Gaps':
             gap_table = document.add_table(rows=1, cols=3)
             gap_table.style = 'Table Grid'
             for idx, heading in enumerate(['Item', 'Status', 'Recommended action']):
@@ -927,10 +984,10 @@ def generate_bid_pack_docx(bid_pack):
                 cells[1].text = docx_safe_text(status)
                 cells[2].text = docx_safe_text(action)
 
-        if title == 'Required Forms':
+        if title == 'Solicitation Forms and Statements':
             add_docx_required_form_tables(document, bid_pack)
 
-        if title == 'Company Document Checklist':
+        if title == 'Proof Documents / Eligibility Evidence':
             checklist_table = document.add_table(rows=1, cols=2)
             checklist_table.style = 'Table Grid'
             checklist_table.rows[0].cells[0].text = 'Document'
@@ -947,6 +1004,27 @@ def generate_bid_pack_docx(bid_pack):
     return buffer.getvalue()
 
 
+def apply_formal_docx_styles(document):
+    from docx.shared import Pt
+
+    styles_collection = document.styles
+    for style_name in ['Normal', 'Body Text']:
+        try:
+            style = styles_collection[style_name]
+        except KeyError:
+            continue
+        style.font.name = 'Times New Roman'
+        style.font.size = Pt(11)
+    for style_name, size in [('Title', 18), ('Heading 1', 14), ('Heading 2', 12), ('Heading 3', 11)]:
+        try:
+            style = styles_collection[style_name]
+        except KeyError:
+            continue
+        style.font.name = 'Times New Roman'
+        style.font.size = Pt(size)
+        style.font.bold = True
+
+
 def add_pdf_xml_bid_structure(elements, bid_pack, style, include_heading=True):
     if include_heading:
         elements.append(Paragraph('XML Structured Bid Response', style['Heading1']))
@@ -957,20 +1035,19 @@ def add_pdf_xml_bid_structure(elements, bid_pack, style, include_heading=True):
     elements.append(Spacer(1, 8))
     for group in xml_bid_structure_groups(bid_pack):
         elements.append(Paragraph(group['title'], style['Heading2']))
-        rows = [['No.', 'Requirement', 'Mandatory', 'Expected response / attachment']]
+        rows = [['No.', 'Requirement', 'Expected response / attachment line', 'TenderAI preparation']]
         for item in group['items']:
-            response_items = item.get('response_items') or []
-            if response_items:
-                response = '<br/>'.join(f'• {value}' for value in response_items)
-            else:
-                response = item.get('response') or 'To be completed / attached'
-            rows.append([
-                str(item.get('order') or ''),
-                Paragraph(item.get('requirement') or item.get('title') or '-', style['BodyText']),
-                'Yes' if item.get('mandatory') else 'No',
-                Paragraph(response, style['BodyText']),
-            ])
-        elements.append(Table(rows, colWidths=[36, 165, 62, 212], style=table_style()))
+            response_items = xml_response_lines(item) or ['To be completed / attached']
+            requirement = item.get('requirement') or item.get('title') or '-'
+            preparation = prepared_output_for_xml_item(bid_pack, item)
+            for line_index, response in enumerate(response_items, start=1):
+                rows.append([
+                    str(item.get('order') or ''),
+                    Paragraph(requirement if line_index == 1 else '', style['BodyText']),
+                    Paragraph(response, style['BodyText']),
+                    Paragraph(preparation, style['BodyText']),
+                ])
+        elements.append(Table(rows, colWidths=[34, 150, 205, 86], style=form_table_style()))
         elements.append(Spacer(1, 10))
 
 
@@ -998,6 +1075,115 @@ def add_docx_xml_bid_structure(document, bid_pack, include_heading=True):
                     cells[3].add_paragraph(docx_safe_text(response), style='List Bullet')
             else:
                 cells[3].text = docx_safe_text(item.get('response') or 'To be completed / attached')
+
+
+def add_pdf_part_heading(elements, number, title, bid_pack=None):
+    style = styles()
+    elements.append(Paragraph(f'PART {number}', style['SmallMuted']))
+    elements.append(Paragraph(title.upper(), style['Heading1']))
+    elements.append(Spacer(1, 4))
+
+
+def add_pdf_tender_bidder_information(elements, bid_pack, style):
+    tender = bid_pack.tender
+    company = bid_pack.company
+    rows = [
+        ['Tender title', Paragraph(tender.title, style['BodyText'])],
+        ['Procuring entity', tender.procuring_entity or '-'],
+        ['Tender number / unique ID', tender.tender_number or '-'],
+        ['ZPPA resource ID', tender.zppa_resource_id or '-'],
+        ['Procurement method / procedure', tender.procurement_method or '-'],
+        ['Submission method', tender.submission_method or '-'],
+        ['Bid security', tender.bid_security_amount or 'To confirm from solicitation document'],
+        ['Participation fee', tender.participation_fee or '-'],
+        ['Closing date', tender.closing_at or tender.closing_date or '-'],
+        ['Bidder', company.name],
+        ['TPIN', company.tpin or '-'],
+        ['PACRA registration', company.registration_number or '-'],
+        ['Address', Paragraph(company.address or '-', style['BodyText'])],
+        ['Email / phone', f'{company.email or "-"} / {company.phone or "-"}'],
+    ]
+    elements.append(Table(rows, colWidths=[165, 310], style=form_table_style()))
+
+
+def add_pdf_documents_comprising_bid(elements, bid_pack, style):
+    rows = [['No.', 'Envelope / part', 'Document or requirement', 'Prepared as']]
+    ordered_rows = submission_order_rows(bid_pack)
+    if ordered_rows:
+        rows.extend([
+            [
+                str(item['order']),
+                Paragraph(item['envelope'], style['BodyText']),
+                Paragraph(item['requirement'], style['BodyText']),
+                Paragraph(item['prepared_as'], style['BodyText']),
+            ]
+            for item in ordered_rows
+        ])
+    else:
+        rows.extend([
+            [str(index), kind, Paragraph(description, style['BodyText']), action]
+            for index, (kind, description, mandatory, action) in enumerate(requirements_matrix_rows(bid_pack), start=1)
+        ])
+    elements.append(Table(rows, colWidths=[34, 120, 210, 111], style=form_table_style()))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph(
+        'Use this table as the assembly checklist. The generated individual bid documents follow the same order.',
+        style['FormInstruction'],
+    ))
+
+
+def add_pdf_qualification_schedule_summary(elements, bid_pack, style):
+    specs = qualification_form_specs(bid_pack)
+    if specs:
+        rows = [['No.', 'Qualification form', 'Factor / purpose']]
+        for index, spec in enumerate(specs, start=1):
+            rows.append([
+                str(index),
+                Paragraph(spec['title'], style['BodyText']),
+                Paragraph(spec.get('factor', 'Qualification'), style['BodyText']),
+            ])
+        elements.append(Table(rows, colWidths=[35, 250, 190], style=form_table_style()))
+        return
+
+    qualification_rows = [
+        row for row in submission_order_rows(bid_pack)
+        if any(word in normalize_match_text(row['requirement']) for word in ['experience', 'financial', 'turnover', 'personnel', 'equipment', 'eligibility'])
+    ]
+    if qualification_rows:
+        rows = [['No.', 'Qualification requirement', 'Prepared response']]
+        rows.extend([
+            [str(row['order']), Paragraph(row['requirement'], style['BodyText']), Paragraph(row['prepared_as'], style['BodyText'])]
+            for row in qualification_rows
+        ])
+        elements.append(Table(rows, colWidths=[35, 285, 155], style=form_table_style()))
+    else:
+        elements.append(Paragraph('No specific qualification schedules were detected yet. Review the solicitation document for eligibility, financial, personnel, equipment, and experience tables.', style['BodyText']))
+
+
+def add_pdf_envelope_response_summary(elements, bid_pack, style, kind):
+    keywords = ['technical', 'specification', 'compliance', 'capacity', 'methodology', 'equipment', 'personnel'] if kind == 'technical' else ['commercial', 'price', 'payment', 'delivery', 'warranty', 'financial', 'offer']
+    rows = []
+    for item in submission_order_rows(bid_pack):
+        text = normalize_match_text(f"{item['envelope']} {item['requirement']} {item['response']} {item['prepared_as']}")
+        if any(keyword in text for keyword in keywords):
+            rows.append(item)
+
+    if not rows:
+        message = 'No technical response items were detected from the XML/ITB yet.' if kind == 'technical' else 'No commercial offer items were detected from the XML/ITB yet.'
+        elements.append(Paragraph(message, style['BodyText']))
+        return
+
+    table_rows = [['No.', 'Requirement', 'Expected response', 'Prepared as']]
+    table_rows.extend([
+        [
+            str(row['order']),
+            Paragraph(row['requirement'], style['BodyText']),
+            Paragraph(row['response'], style['BodyText']),
+            Paragraph(row['prepared_as'], style['BodyText']),
+        ]
+        for row in rows
+    ])
+    elements.append(Table(table_rows, colWidths=[35, 180, 170, 90], style=form_table_style()))
 
 
 def docx_safe_text(value):
@@ -1254,23 +1440,19 @@ def build_bid_sections(bid_pack):
     tender = bid_pack.tender
     company = bid_pack.company
     sections = [
-        ('Tender Summary', [
-            f'Tender title: {tender.title}',
-            f'Procuring entity: {tender.procuring_entity}',
-            f'Tender number / unique ID: {tender.tender_number or "-"}',
-            f'Procurement method: {tender.procurement_method or "-"}',
-            f'Submission method: {tender.submission_method or "-"}',
-            f'Bid security: {tender.bid_security_amount or "To confirm from solicitation document"}',
-            f'Participation fee: {tender.participation_fee or "-"}',
-            f'Closing date: {tender.closing_at or tender.closing_date or "-"}',
+        ('Tender and Bidder Information', [
+            'This front section identifies the tender, procuring entity, bidder, and submission reference information used in the forms that follow.',
         ]),
-        ('Submission Gaps', [
+        ('Submission Readiness Gaps', [
             'Fix the following missing or expired items before treating this bid pack as ready for submission.',
+        ]),
+        ('Documents Comprising the Bid', [
+            'This section converts ITB 11.1 / Tender Structure XML into a practical submission order.',
         ]),
     ]
     if has_xml_bid_structure(bid_pack):
         sections.append((
-            'XML Structured Bid Response',
+            'XML Envelope Submission Order',
             ['The response structure below follows the Tender Structure XML envelope order from ZPPA.'],
         ))
     else:
@@ -1279,44 +1461,25 @@ def build_bid_sections(bid_pack):
             ['The checklist below follows the order captured from the solicitation ITB Documents Comprising the Bid table.'],
         ))
     sections.extend([
-        ('Cover Letter', [
-            f'We submit our bid for {tender.title}.',
-            f'{company.name} confirms interest and availability to perform the required works/services/supplies.',
+        ('Solicitation Forms and Statements', [
+            'The forms and declarations below are arranged first because most ZPPA bid documents require signed forms before supporting evidence.',
         ]),
-        ('Form of Bid / Tender Submission Letter', [
-            f'We, {company.name}, offer to execute the tender in accordance with the solicitation requirements.',
-            'We confirm that our bid remains valid for the required validity period.',
+        ('Proof Documents / Eligibility Evidence', [
+            'Attach mandatory registration, tax, compliance, and other proof documents in the order required by the tender.',
         ]),
-        ('Required Forms', [
-            'TenderAI has prepared draft form tables using the tender and company information available. Review and complete any fields marked for confirmation before submission.',
+        ('Qualification Schedules', [
+            'Complete qualification tables such as eligibility, financial situation, personnel, equipment, and experience where required.',
         ]),
-        ('Bid Checklist', build_bid_checklist(bid_pack)),
+        ('Technical Response', [
+            'Respond to the technical specifications, compliance requirements, delivery capacity, personnel, equipment, and methodology items.',
+        ]),
+        ('Commercial Offer / Price Schedule', [
+            'Attach or complete the tender price schedule, bill of quantities, payment terms, delivery period, warranty, or financial offer required by the solicitation document.',
+        ]),
         ('Company Profile Summary', [
             company.profile_summary or f'{company.name} is a registered supplier/contractor.',
             f'TPIN: {company.tpin or "-"}',
             f'PACRA Registration: {company.registration_number or "-"}',
-        ]),
-        ('Price Schedule', [
-            'Attach or complete the tender price schedule, bill of quantities, or financial offer required by the solicitation document.',
-        ]),
-        ('Company Document Checklist', [
-            'Confirm that each mandatory company document is attached and valid at submission date.',
-        ]),
-        ('Similar Experience Table', [
-            'Past contract | Client | Year | Value | Contact person',
-            'To be completed with relevant past contracts before submission.',
-        ]),
-        ('Litigation Declaration Placeholder', [
-            'We declare that litigation history will be disclosed truthfully before bid submission.',
-        ]),
-        ('Power of Attorney Placeholder', [
-            'Attach signed power of attorney or board authorisation for the bid signatory where required.',
-        ]),
-        ('Delivery Period Confirmation', [
-            'We confirm delivery/service execution within the period stated in the tender or final contract.',
-        ]),
-        ('Warranty / Undertaking Letter', [
-            'We undertake to provide warranty, support, and compliance commitments where applicable.',
         ]),
     ])
     return sections
@@ -1365,29 +1528,40 @@ def generate_single_bid_document_pdf(bid_document):
     company = bid_pack.company
     tender = bid_pack.tender
 
-    elements.extend(letterhead_elements(company, f'Bid Document {bid_document.order}: {bid_document.requirement}'))
+    elements.extend(letterhead_elements(company, form_document_title(bid_document)))
     elements.append(Spacer(1, 8))
     rows = [
-        ['Tender', tender.title],
+        ['Tender / Contract Title', tender.title],
         ['Procuring Entity', tender.procuring_entity],
-        ['Company', company.name],
+        ['Tender Number / Unique ID', tender.tender_number or tender.zppa_resource_id or '-'],
+        ['Bidder', company.name],
         ['Envelope', bid_document.envelope or '-'],
-        ['Mandatory', 'Yes' if bid_document.mandatory else 'No'],
+        ['Requirement Reference', f'XML item {bid_document.order}'],
     ]
-    elements.append(Table(rows, colWidths=[130, 345], style=table_style()))
+    elements.append(Table(rows, colWidths=[145, 330], style=form_table_style()))
     elements.append(Spacer(1, 10))
     add_pdf_xml_preparation_checklist(elements, bid_document, style)
     elements.append(Spacer(1, 10))
 
     lower = bid_document.requirement.lower()
-    if 'bid declaration' in lower or 'bid securing' in lower or 'bid security' in lower:
+    form_code = qualification_form_code_for_text(f'{bid_document.requirement} {bid_document.expected_response}')
+    extracted_template = extracted_template_for_bid_document(bid_document, form_code)
+    if extracted_template:
+        add_pdf_extracted_form_template(elements, bid_document, extracted_template, style)
+    elif 'bid declaration' in lower or 'bid securing' in lower or 'bid security' in lower:
         add_pdf_bid_securing_declaration(elements, bid_pack, style)
     elif 'bid submission form' in lower or 'letter of bid' in lower:
         add_pdf_letter_of_bid(elements, bid_pack, style)
+    elif form_code:
+        add_pdf_qualification_form(elements, bid_pack, form_code, style, source_requirement=bid_document.requirement)
     elif 'power of attorney' in lower:
         add_pdf_placeholder_form(elements, bid_document, 'Power of Attorney / Signatory Authorisation', style)
     elif 'litigation' in lower:
         add_pdf_placeholder_form(elements, bid_document, 'Litigation Status Declaration', style)
+    elif 'warranty' in lower or 'delivery period' in lower or 'delivery' in lower:
+        add_pdf_delivery_warranty_form(elements, bid_document, style)
+    elif 'technical' in lower or 'specification' in lower:
+        add_pdf_technical_response_form(elements, bid_document, style)
     elif bid_document.matched_company_document:
         add_pdf_certificate_reference(elements, bid_document, style)
     else:
@@ -1396,6 +1570,156 @@ def generate_single_bid_document_pdf(bid_document):
     add_signature(elements, label='Authorised signatory')
     pdf = build_pdf_response(elements, bid_document.requirement)
     return append_matched_certificate_pdf(pdf, bid_document)
+
+
+def form_document_title(bid_document):
+    code = qualification_form_code_for_text(f'{bid_document.requirement} {bid_document.expected_response}')
+    if code:
+        return QUALIFICATION_FORM_DEFINITIONS[code]['title']
+    lower = bid_document.requirement.lower()
+    if 'bid declaration' in lower or 'bid securing' in lower or 'bid security' in lower:
+        return 'Bid-Securing Declaration'
+    if 'bid submission form' in lower or 'letter of bid' in lower:
+        return 'Letter of Bid'
+    return bid_document.requirement
+
+
+def extracted_template_for_bid_document(bid_document, form_code=None):
+    document = bid_document.bid_pack.tender.solicitation_documents.order_by('-uploaded_at').first()
+    analysis = document.analysis_summary if document else {}
+    templates = analysis.get('extracted_form_templates', [])
+    if not templates:
+        return None
+    wanted_codes = []
+    lower = normalize_match_text(f'{bid_document.requirement} {bid_document.expected_response}')
+    if form_code:
+        wanted_codes.append(form_code)
+    if 'bid securing' in lower or 'bid security' in lower or 'bid declaration' in lower:
+        wanted_codes.append('BID_SECURING_DECLARATION')
+    if 'letter of bid' in lower or 'bid submission form' in lower or 'form of bid' in lower:
+        wanted_codes.append('LETTER_OF_BID')
+    for template in templates:
+        if template.get('code') in wanted_codes:
+            return template
+    for template in templates:
+        title = normalize_match_text(f"{template.get('title', '')} {template.get('heading', '')}")
+        if any(word in lower for word in title.split() if len(word) > 5):
+            return template
+    return None
+
+
+def add_pdf_extracted_form_template(elements, bid_document, template, style):
+    bid_pack = bid_document.bid_pack
+    elements.append(Paragraph(str(template.get('heading') or template.get('title') or bid_document.requirement).upper(), style['FormTitle']))
+    elements.append(Paragraph(
+        'TenderAI used the form structure detected from the uploaded solicitation document. Confirm layout and complete blank fields before submission.',
+        style['FormInstruction'],
+    ))
+    elements.append(Spacer(1, 6))
+
+    fields = template.get('fields') or []
+    if fields:
+        rows = [['Field from solicitation form', 'TenderAI filled value / bidder response']]
+        for field in fields:
+            rows.append([
+                Paragraph(field, style['BodyText']),
+                Paragraph(fill_extracted_form_field(field, bid_pack), style['BodyText']),
+            ])
+        elements.append(Table(rows, colWidths=[190, 285], style=form_table_style()))
+        elements.append(Spacer(1, 8))
+
+    rows = template.get('rows') or []
+    if rows:
+        normalized_rows = normalize_extracted_rows(rows, style, bid_pack)
+        col_count = max(len(row) for row in normalized_rows)
+        col_width = 475 / col_count
+        elements.append(Paragraph('Original table structure detected:', style['Heading3']))
+        elements.append(Table(normalized_rows, colWidths=[col_width] * col_count, style=form_table_style()))
+        elements.append(Spacer(1, 8))
+
+    lines = template.get('lines') or []
+    if lines:
+        elements.append(Paragraph('Original form text / instructions detected:', style['Heading3']))
+        for line in lines[:22]:
+            if not line or line == template.get('heading'):
+                continue
+            filled = fill_known_placeholders(line, bid_pack)
+            elements.append(Paragraph(filled, style['BodyText']))
+
+    if not fields and not rows and not lines:
+        add_pdf_placeholder_form(elements, bid_document, template.get('title') or 'Tender Form Response', style)
+        return
+
+    elements.append(Spacer(1, 8))
+    elements.append(Table([
+        ['Bidder', bid_pack.company.name],
+        ['Authorised representative', 'To be completed'],
+        ['Signature and stamp', '____________________________'],
+        ['Date', timezone.localdate().strftime('%d/%m/%Y')],
+    ], colWidths=[180, 295], style=form_table_style()))
+
+
+def normalize_extracted_rows(rows, style, bid_pack):
+    width = max(len(row) for row in rows)
+    normalized = []
+    for row in rows[:16]:
+        normalized.append([
+            Paragraph(fill_known_placeholders(str(cell), bid_pack), style['BodyText'])
+            for cell in [*row, *([''] * (width - len(row)))]
+        ])
+    return normalized
+
+
+def fill_extracted_form_field(field, bid_pack):
+    label = normalize_match_text(field)
+    company = bid_pack.company
+    tender = bid_pack.tender
+    if 'bidder' in label and 'name' in label:
+        return company.name
+    if label in {'name'} or 'legal name' in label:
+        return company.name
+    if 'address' in label:
+        return company.address or 'To be completed'
+    if 'country' in label:
+        return 'Zambia'
+    if 'tpin' in label or 'taxpayer' in label:
+        return company.tpin or 'To be completed'
+    if 'registration' in label or 'incorporation' in label:
+        return company.registration_number or 'To be completed from PACRA certificate'
+    if 'email' in label or 'mail' in label:
+        return company.email or 'To be completed'
+    if 'telephone' in label or 'phone' in label:
+        return company.phone or 'To be completed'
+    if 'tender' in label or 'contract' in label:
+        return tender.title
+    if 'procuring entity' in label or label == 'to':
+        return tender.procuring_entity or 'To be completed'
+    if 'date' in label:
+        return timezone.localdate().strftime('%d/%m/%Y')
+    if 'signature' in label or 'signed' in label:
+        return '____________________________'
+    if 'position' in label or 'capacity' in label:
+        return 'Authorised Representative'
+    return 'To be completed'
+
+
+def fill_known_placeholders(text, bid_pack):
+    if not bid_pack:
+        return text
+    company = bid_pack.company
+    tender = bid_pack.tender
+    replacements = {
+        '[name of bidder]': company.name,
+        '[name of tender]': tender.title,
+        '[name of procuring entity]': tender.procuring_entity or '',
+        '[insert date]': timezone.localdate().strftime('%d/%m/%Y'),
+        '[insert name]': company.name,
+        '[insert address]': company.address or '',
+    }
+    filled = str(text)
+    for key, value in replacements.items():
+        filled = re.sub(re.escape(key), value, filled, flags=re.I)
+    return filled
 
 
 def add_pdf_xml_preparation_checklist(elements, bid_document, style):
@@ -1514,34 +1838,101 @@ def document_gap_rows_for_company(tender, company):
 
 
 def add_pdf_placeholder_form(elements, bid_document, title, style):
-    elements.append(Paragraph(title, style['Heading2']))
-    elements.append(Paragraph('Requirement / instruction:', style['Heading3']))
-    elements.append(Paragraph(bid_document.requirement, style['BodyText']))
-    if bid_document.expected_response:
-        elements.append(Spacer(1, 6))
-        elements.append(Paragraph('Expected response / attachments:', style['Heading3']))
-        for line in bid_document.expected_response_lines:
-            elements.append(Paragraph(f'- {line}', style['BodyText']))
-    elements.append(Spacer(1, 10))
-    elements.append(Paragraph('Response:', style['Heading3']))
-    elements.append(Paragraph('To be completed, signed, stamped, or attached as required by the solicitation document.', style['BodyText']))
+    elements.append(Paragraph(title.upper(), style['FormTitle']))
+    elements.append(Paragraph('This response is prepared in the format of the requirement captured from the solicitation document. Review and complete any blank fields before submission.', style['FormInstruction']))
+    elements.append(Spacer(1, 6))
+    bid_pack = bid_document.bid_pack
+    rows = [
+        ['Requirement', Paragraph(bid_document.requirement, style['BodyText'])],
+        ['Bidder response', Paragraph(default_response_for_requirement(bid_document), style['BodyText'])],
+        ['Supporting document', Paragraph(supporting_document_label(bid_document), style['BodyText'])],
+        ['Completion status', Paragraph('To be reviewed, signed, stamped, or attached as required by the solicitation document.', style['BodyText'])],
+        ['Bidder', bid_pack.company.name],
+        ['Authorised signature', '____________________________'],
+        ['Date', timezone.localdate().strftime('%d/%m/%Y')],
+    ]
+    elements.append(Table(rows, colWidths=[145, 330], style=form_table_style()))
+    if bid_document.expected_response_lines:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph('Items to confirm from XML / solicitation:', style['Heading3']))
+        expected_rows = [['No.', 'Instruction / attachment required']]
+        expected_rows.extend([
+            [str(index), Paragraph(line, style['BodyText'])]
+            for index, line in enumerate(bid_document.expected_response_lines, start=1)
+        ])
+        elements.append(Table(expected_rows, colWidths=[35, 440], style=form_table_style()))
 
 
 def add_pdf_certificate_reference(elements, bid_document, style):
     document = bid_document.matched_company_document
-    elements.append(Paragraph('Company certificate attachment', style['Heading2']))
+    elements.append(Paragraph('DOCUMENTARY EVIDENCE / ATTACHMENT', style['FormTitle']))
     elements.append(Paragraph(
-        f'TenderAI matched this requirement to the uploaded company document: {document.get_document_type_display()} - {document.title}.',
+        f'The following company document is submitted in response to this requirement: {document.get_document_type_display()} - {document.title}.',
         style['BodyText'],
     ))
     rows = [
+        ['Requirement', Paragraph(bid_document.requirement, style['BodyText'])],
         ['Document type', document.get_document_type_display()],
         ['Title', document.title],
         ['Issue date', document.issue_date or '-'],
         ['Expiry date', document.expiry_date or '-'],
         ['Status', document.status_label],
+        ['Bidder', bid_document.bid_pack.company.name],
     ]
-    elements.append(Table(rows, colWidths=[130, 345], style=table_style()))
+    elements.append(Table(rows, colWidths=[145, 330], style=form_table_style()))
+
+
+def add_pdf_qualification_form(elements, bid_pack, code, style, source_requirement=''):
+    spec = build_qualification_form_spec(bid_pack, code)
+    elements.append(Paragraph(spec['title'].upper(), style['FormTitle']))
+    elements.append(Paragraph(f'Qualification factor: {spec.get("factor", "Qualification")}', style['FormInstruction']))
+    if source_requirement:
+        elements.append(Paragraph(f'Source requirement: {source_requirement}', style['FormInstruction']))
+    elements.append(Spacer(1, 6))
+    if 'headers' in spec:
+        rows = [spec['headers'], *spec['rows']]
+        col_width = 475 / len(spec['headers'])
+        elements.append(Table(rows, colWidths=[col_width] * len(spec['headers']), style=form_table_style()))
+    else:
+        rows = [['Field', 'Bidder information / response']]
+        rows.extend([[field, Paragraph(str(value), style['BodyText'])] for field, value in spec['rows']])
+        elements.append(Table(rows, colWidths=[170, 305], style=form_table_style()))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph('Declaration: The bidder confirms that the information provided in this form is true and complete, subject to final verification before submission.', style['BodyText']))
+    elements.append(Table([
+        ['Name of authorised representative', 'To be completed'],
+        ['Signature and stamp', '____________________________'],
+        ['Date', timezone.localdate().strftime('%d/%m/%Y')],
+    ], colWidths=[190, 285], style=form_table_style()))
+
+
+def add_pdf_delivery_warranty_form(elements, bid_document, style):
+    bid_pack = bid_document.bid_pack
+    tender = bid_pack.tender
+    rows = [
+        ['Tender', tender.title],
+        ['Bidder', bid_pack.company.name],
+        ['Requirement', Paragraph(bid_document.requirement, style['BodyText'])],
+        ['Delivery / service period offered', 'To be completed in accordance with the solicitation schedule'],
+        ['Warranty / undertaking offered', 'The bidder undertakes to comply with the warranty, delivery, and support requirements stated in the solicitation document.'],
+        ['Exceptions', 'None, unless stated separately in the bid submission.'],
+        ['Authorised signature', '____________________________'],
+    ]
+    elements.append(Paragraph('DELIVERY PERIOD / WARRANTY UNDERTAKING', style['FormTitle']))
+    elements.append(Table(rows, colWidths=[165, 310], style=form_table_style()))
+
+
+def add_pdf_technical_response_form(elements, bid_document, style):
+    rows = [['No.', 'Technical requirement', 'Bidder response / offered specification']]
+    response_items = bid_document.expected_response_lines or [bid_document.requirement]
+    for index, item in enumerate(response_items, start=1):
+        rows.append([
+            str(index),
+            Paragraph(item, style['BodyText']),
+            Paragraph(prefilled_technical_response(item), style['BodyText']),
+        ])
+    elements.append(Paragraph('TECHNICAL RESPONSE SCHEDULE', style['FormTitle']))
+    elements.append(Table(rows, colWidths=[35, 220, 220], style=form_table_style()))
 
 
 def match_company_document_for_xml_item(bid_pack, item):
@@ -1551,6 +1942,100 @@ def match_company_document_for_xml_item(bid_pack, item):
         ' '.join(item.get('response_items') or []),
     ]).lower()
     return match_company_document_for_text(bid_pack, text)
+
+
+QUALIFICATION_FORM_ALIASES = {
+    'eli 1.1': 'ELI 1.1',
+    'eli-1.1': 'ELI 1.1',
+    'bidder information sheet': 'ELI 1.1',
+    'eli 1.2': 'ELI 1.2',
+    'eli-1.2': 'ELI 1.2',
+    'party to jv': 'ELI 1.2',
+    'con-2': 'CON-2',
+    'con 2': 'CON-2',
+    'historical contract non-performance': 'CON-2',
+    'con-3': 'CON-3',
+    'con 3': 'CON-3',
+    'current contract commitments': 'CCC',
+    'form ccc': 'CCC',
+    'fin-3.1': 'FIN-3.1',
+    'fin 3.1': 'FIN-3.1',
+    'financial situation': 'FIN-3.1',
+    'fin-3.2': 'FIN-3.2',
+    'fin3.2': 'FIN-3.2',
+    'average annual turnover': 'FIN-3.2',
+    'fin-3.3': 'FIN-3.3',
+    'fin3.3': 'FIN-3.3',
+    'financial resources': 'FIN-3.3',
+    'exp-2.4.1': 'EXP-2.4.1',
+    'general experience': 'EXP-2.4.1',
+    'exp-2.4.2(a)': 'EXP-2.4.2(a)',
+    'specific experience': 'EXP-2.4.2(a)',
+    'exp-2.4.2(b)': 'EXP-2.4.2(b)',
+    'key activities': 'EXP-2.4.2(b)',
+    'per-1': 'PER-1',
+    'proposed personnel': 'PER-1',
+    'per-2': 'PER-2',
+    'resume of proposed personnel': 'PER-2',
+    'equipment': 'EQU',
+    'manufacturer': 'MFR',
+    'manufacturer authorisation': 'MFR',
+    'manufacturer authorization': 'MFR',
+}
+
+
+def qualification_form_code_for_text(text):
+    text = normalize_match_text(text)
+    for alias, code in QUALIFICATION_FORM_ALIASES.items():
+        if alias in text and code in QUALIFICATION_FORM_DEFINITIONS:
+            return code
+    return None
+
+
+def supporting_document_label(bid_document):
+    document = bid_document.matched_company_document or match_company_document_for_text(
+        bid_document.bid_pack,
+        f'{bid_document.requirement} {bid_document.expected_response}',
+    )
+    if document:
+        return f'{document.get_document_type_display()} - {document.title}'
+    expected_type = expected_document_type_for_text(f'{bid_document.requirement} {bid_document.expected_response}')
+    if expected_type:
+        return f'{expected_type.label} to be attached'
+    return 'Not applicable / manual confirmation'
+
+
+def default_response_for_requirement(bid_document):
+    text = normalize_match_text(f'{bid_document.requirement} {bid_document.expected_response}')
+    company = bid_document.bid_pack.company
+    if 'bid validity' in text:
+        return 'The bid validity period shall comply with the validity period stated in the solicitation document.'
+    if 'payment terms' in text:
+        return 'The bidder accepts the payment terms stated in the solicitation document, unless otherwise stated in the financial offer.'
+    if 'price structure' in text:
+        return 'The price structure shall be completed in the prescribed price schedule / commercial offer.'
+    if 'availability' in text and 'station' in text:
+        return 'To be completed with the bidder location / facility details applicable to this tender.'
+    if looks_like_attachment_request(text):
+        return f'{company.name} attaches or will attach the documentary evidence listed in this requirement.'
+    return f'{company.name} confirms compliance with this requirement, subject to final review against the solicitation document.'
+
+
+def prefilled_technical_response(item):
+    text = normalize_match_text(item)
+    if 'mandatory' in text:
+        suffix = ' Mandatory requirement acknowledged.'
+    else:
+        suffix = ''
+    if 'diesel' in text:
+        return 'Compliant. Low sulphur diesel shall be supplied as specified.' + suffix
+    if 'petrol' in text:
+        return 'Compliant. Unleaded petrol shall be supplied as specified.' + suffix
+    if 'specification' in text:
+        return 'Compliant / to be completed with detailed offered specification.' + suffix
+    if 'location' in text or 'availability' in text:
+        return 'To be completed with location and availability evidence.' + suffix
+    return 'Compliant / to be completed with bidder-specific details.' + suffix
 
 
 DOCUMENT_MATCH_RULES = [
@@ -1695,14 +2180,84 @@ def append_matched_certificate_pdf(main_pdf, bid_document):
     return buffer.getvalue()
 
 
+def generated_bid_documents_index_pdf(bid_pack):
+    style = styles()
+    elements = []
+    add_pdf_cover_page(elements, bid_pack)
+    elements.append(PageBreak())
+    elements.append(Paragraph('Generated Bid Documents Index', style['Heading1']))
+    elements.append(Paragraph(
+        'The documents after this index are arranged according to the Tender Structure XML / ITB submission order. '
+        'Review, sign, stamp, and replace placeholder entries where the solicitation requires manual completion.',
+        style['BodyText'],
+    ))
+    elements.append(Spacer(1, 8))
+    rows = [['No.', 'Envelope', 'Requirement', 'Prepared document']]
+    for bid_document in bid_pack.bid_documents.order_by('order'):
+        rows.append([
+            str(bid_document.order),
+            Paragraph(bid_document.envelope or '-', style['BodyText']),
+            Paragraph(bid_document.requirement, style['BodyText']),
+            Paragraph(prepared_output_for_bid_document(bid_document), style['BodyText']),
+        ])
+    elements.append(Table(rows, colWidths=[34, 120, 210, 111], style=form_table_style()))
+    return build_pdf_response(elements, f'Generated Bid Documents - {bid_pack.tender.title}')
+
+
+def generated_envelope_divider_pdf(bid_pack, envelope, part_number):
+    style = styles()
+    divider_title = style['Title'].clone(f'EnvelopeDivider{part_number}')
+    divider_title.alignment = 1
+    divider_title.fontSize = 22
+    divider_title.leading = 28
+    divider_title.spaceAfter = 12
+    body = style['BodyText'].clone(f'EnvelopeDividerBody{part_number}')
+    body.alignment = 1
+    elements = [
+        Spacer(1, A4[1] * 0.27),
+        Paragraph(f'PART {part_number}', style['Heading1']),
+        Paragraph(str(envelope or 'Bid Requirements').upper(), divider_title),
+        Paragraph('Documents in this section follow the matching XML envelope / solicitation schedule.', body),
+        Spacer(1, 18),
+        Paragraph(f'Bidder: {bid_pack.company.name}', body),
+        Paragraph(f'Tender: {bid_pack.tender.title}', body),
+    ]
+    return build_pdf_response(elements, f'{envelope} - Divider')
+
+
+def prepared_output_for_bid_document(bid_document):
+    text = normalize_match_text(f'{bid_document.requirement} {bid_document.expected_response}')
+    form_code = qualification_form_code_for_text(text)
+    if 'bid declaration' in text or 'bid securing' in text or 'bid security' in text:
+        return 'Bid-Securing Declaration form'
+    if 'bid submission form' in text or 'letter of bid' in text or 'form of bid' in text:
+        return 'Letter of Bid / Tender Submission Letter'
+    if form_code:
+        return f'Qualification form {form_code}'
+    if bid_document.matched_company_document:
+        return f'Certificate attachment: {bid_document.matched_company_document.get_document_type_display()}'
+    if any(word in text for word in ['technical', 'specification', 'capacity', 'compliance']):
+        return 'Technical response schedule'
+    if any(word in text for word in ['commercial', 'price', 'payment', 'delivery', 'warranty']):
+        return 'Commercial / undertaking schedule'
+    return 'Prepared response form'
+
+
 def generate_combined_bid_documents_pdf(bid_pack):
     if not bid_pack.bid_documents.exists():
         generate_xml_bid_documents(bid_pack)
     writer = PdfWriter()
+    append_pdf_bytes(writer, generated_bid_documents_index_pdf(bid_pack))
+    current_envelope = None
+    part_number = 0
     for bid_document in bid_pack.bid_documents.order_by('order'):
         if not bid_document.generated_pdf:
             continue
         try:
+            if bid_document.envelope != current_envelope:
+                current_envelope = bid_document.envelope
+                part_number += 1
+                append_pdf_bytes(writer, generated_envelope_divider_pdf(bid_pack, current_envelope, part_number))
             with bid_document.generated_pdf.open('rb') as handle:
                 reader = PdfReader(handle)
                 for page in reader.pages:
@@ -1728,4 +2283,20 @@ def table_style():
         ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
         ('TOPPADDING', (0, 0), (-1, -1), 7),
+    ])
+
+
+def form_table_style():
+    return TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.55, colors.HexColor('#333333')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Times-Roman'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('LEADING', (0, 0), (-1, -1), 11),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
     ])

@@ -116,6 +116,7 @@ def analyze_tender_document(document_text):
         'clarification_address': '\n'.join(extract_address_lines(document_text, mode='clarification')),
         'submission_address': '\n'.join(extract_address_lines(document_text, mode='submission')),
         'qualification_forms': extract_qualification_forms(document_text),
+        'extracted_form_templates': extract_form_templates(document_text),
         'dates': extract_dates(document_text),
         'evaluation_criteria': extract_evaluation_criteria(document_text),
         'forms_required': extract_forms_required(document_text),
@@ -202,6 +203,112 @@ def extract_qualification_forms(document_text):
                 'source': 'Section III qualification / Section IV forms',
             })
     return found
+
+
+FORM_TEMPLATE_PATTERNS = [
+    ('LETTER_OF_BID', 'Letter of Bid', ['letter of bid', 'bid submission form', 'form of bid']),
+    ('BID_SECURING_DECLARATION', 'Bid-Securing Declaration', ['bid-securing declaration', 'bid securing declaration']),
+    ('ELI 1.1', 'Bidder Information Sheet', ['form eli 1.1', 'eli 1.1', 'bidder information sheet']),
+    ('ELI 1.2', 'Party to JV Information Sheet', ['form eli 1.2', 'eli 1.2', 'party to jv information sheet']),
+    ('CON-2', 'Historical Contract Non-Performance', ['form con-2', 'con-2', 'historical contract non-performance']),
+    ('CON-3', 'Current Contract Commitments', ['form con-3', 'con-3', 'current contract commitments']),
+    ('FIN-3.1', 'Financial Situation', ['form fin-3.1', 'fin-3.1', 'financial situation']),
+    ('FIN-3.2', 'Average Annual Turnover', ['form fin-3.2', 'fin-3.2', 'average annual turnover']),
+    ('FIN-3.3', 'Financial Resources', ['form fin-3.3', 'fin-3.3', 'financial resources']),
+    ('EXP-2.4.1', 'General Experience', ['form exp-2.4.1', 'exp-2.4.1', 'general experience']),
+    ('EXP-2.4.2(a)', 'Specific Experience', ['form exp-2.4.2(a)', 'exp-2.4.2(a)', 'specific experience']),
+    ('EXP-2.4.2(b)', 'Specific Experience in Key Activities', ['form exp-2.4.2(b)', 'exp-2.4.2(b)', 'key activities']),
+    ('PER-1', 'Proposed Personnel', ['form per-1', 'per-1', 'proposed personnel']),
+    ('PER-2', 'Resume of Proposed Personnel', ['form per-2', 'per-2', 'resume of proposed personnel']),
+    ('EQU', 'Equipment Form', ['form equ', 'equipment form', 'forms for equipment']),
+    ('MFR', 'Manufacturer Authorisation', ['manufacturer authorisation', 'manufacturer authorization']),
+]
+
+
+def extract_form_templates(document_text):
+    lines = [re.sub(r'\s+', ' ', line).strip() for line in document_text.splitlines()]
+    lines = [line for line in lines if line]
+    templates = []
+    used_codes = set()
+    for code, title, patterns in FORM_TEMPLATE_PATTERNS:
+        index = find_form_heading_index(lines, patterns)
+        if index is None or code in used_codes:
+            continue
+        section_lines = collect_form_section(lines, index)
+        if len(section_lines) < 2:
+            continue
+        templates.append({
+            'code': code,
+            'title': title,
+            'heading': section_lines[0],
+            'source': 'Uploaded solicitation document',
+            'lines': section_lines[:45],
+            'fields': extract_form_fields_from_lines(section_lines),
+            'rows': extract_form_rows_from_lines(section_lines),
+        })
+        used_codes.add(code)
+    return templates
+
+
+def find_form_heading_index(lines, patterns):
+    for index, line in enumerate(lines):
+        lower = line.lower()
+        if any(pattern in lower for pattern in patterns):
+            return index
+    return None
+
+
+def collect_form_section(lines, start_index):
+    section = []
+    for line in lines[start_index:start_index + 80]:
+        lower = line.lower()
+        if len(section) > 8 and is_new_major_section(lower):
+            break
+        section.append(line)
+        if len(section) >= 45:
+            break
+    return section
+
+
+def is_new_major_section(lower_line):
+    markers = [
+        'section v.', 'section vi.', 'section vii.', 'section iv.',
+        'qualification criteria', 'schedule of requirements', 'general conditions',
+    ]
+    if any(marker in lower_line for marker in markers):
+        return True
+    return bool(re.match(r'^(form\s+)?(?:eli|con|fin|exp|per)[\s-]*\d', lower_line))
+
+
+def extract_form_fields_from_lines(lines):
+    fields = []
+    field_patterns = [
+        r'^(?P<label>[A-Z][A-Za-z0-9 /\-,().]{2,55})\s*[:]\s*(?P<value>.*)$',
+        r'^(?P<label>Date|Name|Address|Country|Tender|Bidder|Signature|Position|Title|Email|Telephone)\b\s*(?P<value>.*)$',
+    ]
+    for line in lines:
+        for pattern in field_patterns:
+            match = re.match(pattern, line)
+            if not match:
+                continue
+            label = match.group('label').strip(' :')
+            if label.lower() in {'form', 'section'}:
+                continue
+            if label not in fields:
+                fields.append(label)
+            break
+    return fields[:24]
+
+
+def extract_form_rows_from_lines(lines):
+    rows = []
+    for line in lines:
+        if not re.search(r'\s{2,}|\t|\|', line):
+            continue
+        parts = [part.strip() for part in re.split(r'\s{2,}|\t|\|', line) if part.strip()]
+        if len(parts) >= 2:
+            rows.append(parts[:6])
+    return rows[:18]
 
 
 def ordered_letter_items(section_text, section_name):

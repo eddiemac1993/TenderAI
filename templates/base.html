@@ -9,33 +9,81 @@
   <link href="{% static 'css/app.css' %}?v=20260701-bid-tasks" rel="stylesheet">
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark app-navbar">
-  <div class="container-fluid">
-    <a class="navbar-brand fw-semibold" href="{% url 'dashboard' %}">TenderAI</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"><span class="navbar-toggler-icon"></span></button>
-    <div class="collapse navbar-collapse" id="nav">
-      <div class="navbar-nav">
-        <a class="nav-link" href="{% url 'companies:list' %}">Companies</a>
-        <a class="nav-link" href="{% url 'documents:list' %}">Documents</a>
-        <a class="nav-link" href="{% url 'tenders:list' %}">Tenders</a>
-        <a class="nav-link" href="{% url 'bid_generator:list' %}">Bid Packs</a>
-        <a class="nav-link" href="{% url 'council_opportunities:list' %}">Council Opportunities</a>
-        <a class="nav-link" href="{% url 'companies:list' %}">Generate Profiles</a>
-        {% if user.is_superuser or user.profile.can_manage_users %}
-          <a class="nav-link" href="{% url 'core:organizations' %}">Organizations</a>
-        {% endif %}
-        <a class="nav-link" href="{% url 'core:support_chat' %}">Help Chat</a>
-        <a class="nav-link" href="{% url 'core:open_project_folder' %}">Project Folder</a>
-        {% if tenderai_update.enabled and tenderai_update.available %}
-          <a class="nav-link update-nav-link" href="{% url 'core:app_update' %}">Update <span class="nav-alert-badge">{{ tenderai_update.behind }}</span></a>
-        {% endif %}
-        <a class="nav-link" href="{% url 'about' %}">About / Help</a>
-        <div class="nav-item dropdown">
-          <button class="nav-link dropdown-toggle nav-alert-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+<div class="app-layout">
+  <aside class="offcanvas-lg offcanvas-start app-sidebar" tabindex="-1" id="appSidebar" aria-labelledby="appSidebarLabel">
+    <div class="offcanvas-header app-sidebar-mobile-header">
+      <h1 class="offcanvas-title h5" id="appSidebarLabel">TenderAI</h1>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="Close"></button>
+    </div>
+    <div class="app-sidebar-inner">
+      <a class="app-brand" href="{% url 'dashboard' %}">
+        <span class="app-brand-mark">T</span>
+        <span>
+          <strong>TenderAI</strong>
+          <small>Procurement workspace</small>
+        </span>
+      </a>
+
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <div class="sidebar-section">
+          <span class="sidebar-section-title">Work</span>
+          <a class="sidebar-link" href="{% url 'dashboard' %}">Dashboard</a>
+          <a class="sidebar-link" href="{% url 'tenders:list' %}">Tenders</a>
+          <a class="sidebar-link" href="{% url 'documents:list' %}">Documents</a>
+          <a class="sidebar-link" href="{% url 'companies:list' %}">Companies</a>
+          <a class="sidebar-link" href="{% url 'bid_generator:list' %}">Generated bids</a>
+          <a class="sidebar-link" href="{% url 'companies:list' %}">Generate profiles</a>
+        </div>
+
+        <div class="sidebar-section">
+          <span class="sidebar-section-title">Opportunities</span>
+          <a class="sidebar-link" href="{% url 'council_opportunities:list' %}">Council Opportunities</a>
+        </div>
+
+        <div class="sidebar-section">
+          <span class="sidebar-section-title">Team</span>
+          {% if tenderai_user.can_manage_users or not user.is_authenticated %}
+            <a class="sidebar-link" href="{% url 'core:organizations' %}">Organizations</a>
+          {% endif %}
+          <a class="sidebar-link" href="{% url 'admin:index' %}">Admin</a>
+        </div>
+
+        <div class="sidebar-section">
+          <span class="sidebar-section-title">System</span>
+          {% if tenderai_update.enabled and tenderai_update.available %}
+            <a class="sidebar-link sidebar-link-alert" href="{% url 'core:app_update' %}">Update available <span class="nav-alert-badge">{{ tenderai_update.behind }}</span></a>
+          {% endif %}
+          <a class="sidebar-link" href="{% url 'about' %}">About / Help</a>
+          <a class="sidebar-link" href="{% url 'core:open_project_folder' %}">Project Folder</a>
+          {% if user.is_authenticated %}<a class="sidebar-link" href="{% url 'logout' %}">Logout</a>{% endif %}
+        </div>
+      </nav>
+    </div>
+  </aside>
+
+  <div class="app-page">
+    <header class="app-topbar">
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar">Menu</button>
+        <div>
+          <div class="topbar-title">TenderAI</div>
+          <div class="topbar-subtitle">
+            {% if user.is_authenticated %}
+              {{ user.username }}{% if tenderai_user.organization %} · {{ tenderai_user.organization.name }}{% endif %}
+            {% else %}
+              Local workspace
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-sm btn-primary" href="{% url 'tenders:zppa_find_by_url' %}">Find ZPPA URL</a>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary nav-alert-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             Alerts
             {% if tenderai_alerts.total %}<span class="nav-alert-badge">{{ tenderai_alerts.total }}</span>{% endif %}
           </button>
-          <div class="dropdown-menu dropdown-menu-dark alert-menu">
+          <div class="dropdown-menu dropdown-menu-end alert-menu">
             <a class="dropdown-item d-flex justify-content-between gap-3" href="{% url 'tenders:list' %}?period=closing_7">
               <span>Tenders closing in 7 days</span><strong>{{ tenderai_alerts.closing_soon }}</strong>
             </a>
@@ -50,16 +98,18 @@
             </a>
           </div>
         </div>
-        <a class="nav-link" href="{% url 'admin:index' %}">Admin</a>
-        {% if user.is_authenticated %}<a class="nav-link" href="{% url 'logout' %}">Logout</a>{% endif %}
       </div>
-    </div>
+    </header>
+    <main class="container-fluid app-shell">
+      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
   </div>
-</nav>
-<main class="container app-shell">
-  {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
-  {% block content %}{% endblock %}
-</main>
+</div>
+<a class="floating-help-chat" href="{% url 'core:support_chat' %}" aria-label="Open Help Chat">
+  <span class="floating-help-icon">?</span>
+  <span class="floating-help-label">Help Chat</span>
+</a>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
