@@ -62,7 +62,7 @@ class TenderListView(ListView):
                 | Q(procurement_method__icontains=query)
             )
         if entity:
-            queryset = queryset.filter(procuring_entity=entity)
+            queryset = queryset.filter(procuring_entity__icontains=entity)
         if period == 'published_today':
             queryset = queryset.filter(published_at__date=today)
         elif period == 'published_7':
