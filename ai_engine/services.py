@@ -207,7 +207,96 @@ def extract_ordered_bid_items(document_text):
         items = ordered_letter_items(match.group('body'), section)
         if items:
             return items
-    return []
+    return extract_supplemental_schedule_items(document_text)
+
+
+def extract_supplemental_schedule_items(document_text):
+    text = re.sub(r'\s+', ' ', document_text or ' ').strip()
+    if not text:
+        return []
+    items = []
+    add_supplemental_item(
+        items,
+        text,
+        'Financial Capability',
+        ['financial capability', 'financial capacity', 'lines of credit', 'financial resources'],
+        'Financial response',
+        'Provide financial capacity evidence',
+        'Attach proof of available financial resources, bank lines of credit, or other evidence required by the solicitation.',
+    )
+    add_supplemental_item(
+        items,
+        text,
+        'Experience and Technical Capacity',
+        ['experience and technical capacity', 'similar contracts', 'past three years'],
+        'Technical response',
+        'Provide experience and technical capacity evidence',
+        'Attach list of similar contracts executed in the stated period, with completion evidence, references, award letters, LPOs, GRNs, or delivery notes as applicable.',
+    )
+    add_supplemental_item(
+        items,
+        text,
+        'Brochures / Goods Compliance',
+        ['brochures', 'goods it offers meet', 'technical specifications'],
+        'Technical response',
+        'Provide brochures and technical compliance evidence',
+        'Attach brochures, catalogues, data sheets, or compliance statement showing the offered goods meet the technical specifications.',
+    )
+    add_supplemental_item(
+        items,
+        text,
+        'Price Schedule',
+        ['price schedule: goods', 'price schedule forms', 'total price: goods'],
+        'Commercial offer',
+        'Complete Price Schedule for Goods',
+        'Complete the Price Schedule using the solicitation format, including item description, delivery date, quantity, unit price, total price, and country of origin.',
+    )
+    add_supplemental_item(
+        items,
+        text,
+        'Related Services Price Schedule',
+        ['price and completion schedule', 'related services'],
+        'Commercial offer',
+        'Complete Price and Completion Schedule for Related Services',
+        'Complete the related services schedule where services, installation, training, delivery, or support are required.',
+    )
+    add_supplemental_item(
+        items,
+        text,
+        'Delivery Schedule',
+        ['list of goods and delivery schedule', 'equipment delivery locations', 'delivery schedule'],
+        'Commercial offer',
+        'Confirm delivery schedule and locations',
+        'Confirm delivery period, delivery locations, and ability to deliver the listed goods within the required schedule.',
+    )
+    add_supplemental_item(
+        items,
+        text,
+        'Technical Specifications',
+        ['technical specifications', 'goods and related services shall comply', 'equipment name specification quantity'],
+        'Technical response',
+        'Prepare technical specification compliance schedule',
+        'Respond item-by-item to the technical specifications, quantities, standards, inspections, and tests required by the solicitation.',
+    )
+    return items
+
+
+def add_supplemental_item(items, text, marker, keywords, envelope, requirement, response):
+    normalized = text.lower()
+    if not any(keyword in normalized for keyword in keywords):
+        return
+    order = len(items) + 1
+    items.append({
+        'order': order,
+        'reference': f'Solicitation {order}',
+        'envelope': envelope,
+        'requirement': requirement,
+        'response': response,
+        'response_items': [response],
+        'mandatory': True,
+        'title': f'{requirement} - {response}',
+        'source': marker,
+    })
 
 
 QUALIFICATION_FORM_PATTERNS = [
@@ -701,12 +790,35 @@ def update_tender_from_analysis(tender, analysis):
     if submission_address and tender.submission_address != submission_address:
         tender.submission_address = submission_address
         fields.append('submission_address')
-    if itb_11_items and tender.itb_11_items != itb_11_items:
-        tender.itb_11_items = itb_11_items
+    if itb_11_items:
+        merged_items = merge_ordered_bid_items(tender.itb_11_items or [], itb_11_items)
+    else:
+        merged_items = []
+    if merged_items and tender.itb_11_items != merged_items:
+        tender.itb_11_items = merged_items
         fields.append('itb_11_items')
     if fields:
         fields.append('updated_at')
         tender.save(update_fields=fields)
+
+
+def merge_ordered_bid_items(existing_items, new_items):
+    merged = []
+    seen = set()
+
+    def item_key(item):
+        return (
+            re.sub(r'\s+', ' ', str(item.get('envelope') or '').strip().lower()),
+            re.sub(r'\s+', ' ', str(item.get('requirement') or item.get('title') or '').strip().lower()),
+        )
+
+    for item in list(existing_items or []) + list(new_items or []):
+        key = item_key(item)
+        if not key[1] or key in seen:
+            continue
+        seen.add(key)
+        merged.append({**item, 'order': len(merged) + 1})
+    return merged[:100]
 
 
 def create_requirements_from_analysis(tender, analysis):
