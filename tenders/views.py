@@ -360,7 +360,7 @@ def analyze_tender_placeholder(request, pk):
 
 def scrape_zppa_today(request):
     try:
-        imported = import_public_zppa_tenders(today_only=True, limit=10, write_log=True)
+        imported = import_public_zppa_tenders(today_only=False, limit=50, write_log=True)
     except Exception as exc:
         messages.error(request, zppa_scrape_error_message(exc))
         return HttpResponseRedirect(reverse('tenders:zppa_scrape_logs'))
@@ -368,7 +368,7 @@ def scrape_zppa_today(request):
     updated_count = len(imported) - created_count
     messages.success(
         request,
-        f'Public ZPPA scrape finished: {created_count} created, {updated_count} updated.',
+        f'Public ZPPA scrape finished: {created_count} created, {updated_count} updated from current public listings.',
     )
     return HttpResponseRedirect(reverse('tenders:list'))
 

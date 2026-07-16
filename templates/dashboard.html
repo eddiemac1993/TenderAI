@@ -8,7 +8,7 @@
     <p class="hero-copy mb-0">Scrape public ZPPA tenders locally, review urgent opportunities, check company readiness, and prepare bid packs from one place.</p>
   </div>
   <div class="hero-actions">
-    <a class="btn btn-light btn-lg" href="{% url 'tenders:zppa_scrape_today' %}">Scrape ZPPA today</a>
+    <a class="btn btn-light btn-lg" href="{% url 'tenders:zppa_scrape_today' %}">Scrape ZPPA</a>
     <a class="btn btn-outline-light" href="{% url 'tenders:list' %}">View tenders</a>
     <a class="btn btn-outline-light" href="{% url 'tenders:zppa_scrape_logs' %}">Scrape logs</a>
   </div>
@@ -57,7 +57,7 @@
             </div>
           </a>
         {% empty %}
-          <div class="empty-state">No tenders yet. Click <strong>Scrape ZPPA today</strong> to fetch public opportunities.</div>
+          <div class="empty-state">No tenders yet. Click <strong>Scrape ZPPA</strong> to fetch public opportunities.</div>
         {% endfor %}
       </div>
     </div>

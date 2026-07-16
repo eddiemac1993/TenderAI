@@ -8,7 +8,7 @@
   </div>
   <div class="d-flex gap-2 flex-wrap">
     <a class="btn btn-success" href="{% url 'tenders:zppa_find_by_url' %}">Find by ZPPA URL</a>
-    <a class="btn btn-outline-success" href="{% url 'tenders:zppa_scrape_today' %}">Scrape today</a>
+    <a class="btn btn-outline-success" href="{% url 'tenders:zppa_scrape_today' %}">Scrape ZPPA</a>
     <a class="btn btn-outline-secondary" href="{% url 'tenders:zppa_scrape_logs' %}">Scrape logs</a>
     <a class="btn btn-primary" href="{% url 'tenders:create' %}">Add tender</a>
   </div>
@@ -82,7 +82,7 @@
     </article>
   {% empty %}
     <div class="empty-state app-card">
-      No tenders found for this filter. Try resetting the filters or click <strong>Scrape today</strong>.
+      No tenders found for this filter. Try resetting the filters or click <strong>Scrape ZPPA</strong>.
     </div>
   {% endfor %}
 </div>
