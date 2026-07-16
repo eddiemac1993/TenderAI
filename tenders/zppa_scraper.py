@@ -13,7 +13,7 @@ from django.db.models import Q
 from .models import Tender, ZppaScrapeLog
 
 
-ZPPA_EGP_HOME_URL = 'https://www.zppa.org.zm/epps'
+ZPPA_EGP_HOME_URL = 'https://eprocure.zppa.org.zm/epps'
 
 
 @dataclass
@@ -89,7 +89,11 @@ class PublicZppaTenderScraper:
     def fetch_html(self, url=None):
         request = Request(
             url or self.source_url,
-            headers={'User-Agent': 'TenderAI public tender importer/1.0'},
+            headers={
+                'User-Agent': 'Mozilla/5.0 TenderAI public tender importer/1.0',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Connection': 'close',
+            },
         )
         with urlopen(request, timeout=self.timeout) as response:
             return response.read().decode('utf-8', errors='replace'), response.geturl()

@@ -15,6 +15,7 @@ from .forms import BidPackForm
 from .models import BidPack
 from .services import (
     build_bid_checklist,
+    bid_document_rows_for_display,
     generate_combined_bid_documents_pdf,
     generate_xml_bid_documents,
     document_gap_rows_for_company,
@@ -68,6 +69,7 @@ class BidPackDetailView(DetailView):
         context['xml_bid_structure_groups'] = xml_bid_structure_groups(self.object)
         context['ordered_attachments'] = ordered_certificate_documents(self.object)
         context['bid_documents'] = self.object.bid_documents.order_by('order')
+        context['bid_document_rows'] = bid_document_rows_for_display(self.object)
         context['regeneration_status'] = regeneration_status(self.object)
         match = TenderMatch.objects.filter(tender=self.object.tender, company=self.object.company).first()
         context['decision'] = tender_decision(match, self.object.tender) if match else None
@@ -151,9 +153,13 @@ def generate_bid_documents(request, pk):
 
 def download_bid_document(request, pk, document_id):
     bid_pack = get_object_or_404(filter_queryset_for_user(BidPack.objects.all(), request.user, 'company__organization'), pk=pk)
-    bid_document = get_object_or_404(bid_pack.bid_documents, pk=document_id)
+    bid_document = bid_pack.bid_documents.filter(pk=document_id).first()
+    if not bid_document:
+        messages.warning(request, 'That generated document link is no longer current. Please use the latest links below.')
+        return redirect('bid_generator:detail', pk=pk)
     if not bid_document.generated_pdf:
-        raise Http404('This bid document has not been generated yet.')
+        messages.warning(request, 'This bid document has not been generated yet. Regenerate the XML documents and try again.')
+        return redirect('bid_generator:detail', pk=pk)
     try:
         return FileResponse(
             bid_document.generated_pdf.open('rb'),
@@ -161,8 +167,9 @@ def download_bid_document(request, pk, document_id):
             filename=bid_document.generated_pdf.name.rsplit('/', 1)[-1],
             content_type='application/pdf',
         )
-    except FileNotFoundError as exc:
-        raise Http404('Bid document file was not found. Please regenerate bid documents.') from exc
+    except FileNotFoundError:
+        messages.warning(request, 'The generated PDF file was not found. Please regenerate the XML documents.')
+        return redirect('bid_generator:detail', pk=pk)
 
 
 def download_combined_bid_documents(request, pk):

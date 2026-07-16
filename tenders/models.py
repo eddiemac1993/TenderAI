@@ -86,6 +86,18 @@ class Tender(models.Model):
         return 'Open'
 
     @property
+    def days_left_label(self):
+        days = self.days_until_deadline
+        if days is None:
+            return 'No deadline'
+        if days < 0:
+            count = abs(days)
+            return f'Closed {count} day{"s" if count != 1 else ""} ago'
+        if days == 0:
+            return 'Closing today'
+        return f'{days} day{"s" if days != 1 else ""} left'
+
+    @property
     def urgency_class(self):
         days = self.days_until_deadline
         if days is None:

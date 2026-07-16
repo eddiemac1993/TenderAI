@@ -199,13 +199,13 @@
     </div>
   </div>
   {% endif %}
-  {% if bid_documents %}
+  {% if bid_document_rows %}
   <div class="col-12">
     <div class="section-panel">
       <div class="section-heading">
         <div>
           <h2 class="h5 mb-1">Generated XML bid documents</h2>
-          <p class="text-muted mb-0">Download each generated document separately, or combine them into one PDF.</p>
+          <p class="text-muted mb-0">Each row creates one document from the XML requirement: instruction page first, then the form, letter, table, certificate, or missing-document notice.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
           <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:generate_documents' object.pk %}">Regenerate documents</a>
@@ -213,19 +213,25 @@
           <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download_combined_documents' object.pk %}">Download combined</a>
         </div>
       </div>
+      <div class="alert alert-info small mb-3">
+        <strong>Sample structure guide:</strong>
+        TenderAI formats generated forms using the closest detected solicitation/ZPPA sample style. For example, a Bid-Securing Declaration is generated as FORM V with Times New Roman text, right/center headings, field lines, numbered clauses, and a signature block.
+      </div>
       <div class="table-responsive">
         <table class="table align-middle mb-0">
           <thead>
             <tr>
               <th>No.</th>
-              <th>Envelope</th>
+              <th>Part</th>
               <th>Requirement</th>
-              <th>Matched company document</th>
+              <th>What will be prepared</th>
+              <th>Status</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {% for document in bid_documents %}
+            {% for row in bid_document_rows %}
+              {% with document=row.document %}
               <tr>
                 <td>{{ document.order }}</td>
                 <td>{{ document.envelope|default:"-" }}</td>
@@ -240,17 +246,30 @@
                   {% endif %}
                 </td>
                 <td>
+                  {{ row.action }}
+                  {% if row.warning %}
+                    <div class="small text-warning fw-semibold">{{ row.warning }}</div>
+                  {% endif %}
                   {% if document.matched_company_document %}
-                    {{ document.matched_company_document.get_document_type_display }} - {{ document.matched_company_document.title }}
+                    <div class="small text-muted">{{ document.matched_company_document.title }}</div>
+                  {% elif row.required_type %}
+                    <div class="small text-muted">Required certificate/document is not uploaded yet.</div>
                   {% else %}
-                    <span class="badge text-bg-warning">Manual response needed</span>
+                    <div class="small text-muted">TenderAI will generate a draft response for review.</div>
                   {% endif %}
                 </td>
+                <td><span class="badge text-bg-{{ row.badge }}">{{ row.status }}</span></td>
                 <td class="text-end">
-                  <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}?inline=1" target="_blank" rel="noopener">View</a>
-                  <a class="btn btn-sm btn-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}">Download</a>
+                  <div class="d-flex gap-1 justify-content-end flex-wrap">
+                    {% if row.required_type and not document.matched_company_document %}
+                      <a class="btn btn-sm btn-warning" href="{% url 'documents:create' %}?company={{ object.company.pk }}&document_type={{ row.required_type }}&next={{ request.get_full_path|urlencode }}">Upload</a>
+                    {% endif %}
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}?inline=1" target="_blank" rel="noopener">View required document</a>
+                    <a class="btn btn-sm btn-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}">Download</a>
+                  </div>
                 </td>
               </tr>
+              {% endwith %}
             {% endfor %}
           </tbody>
         </table>

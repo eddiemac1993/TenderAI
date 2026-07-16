@@ -13,12 +13,11 @@
   </div>
   <div class="d-flex gap-2 flex-wrap">
     <a class="btn btn-primary" href="#ai-pane" data-open-tab="#ai-pane">Upload solicitation / Ask AI</a>
-    <a class="btn btn-outline-secondary" href="{% url 'tenders:analyze_placeholder' object.pk %}">Run analysis</a>
-    <a class="btn btn-outline-success" href="{% url 'tenders:match' object.pk %}">Should we bid?</a>
-    <a class="btn btn-outline-primary" href="{% url 'tenders:tasks' object.pk %}">Bid tasks</a>
+    {% if object.itb_11_items %}
+      <a class="btn btn-outline-primary" href="{% url 'tenders:download_xml_structure_pdf' object.pk %}?inline=1" target="_blank" rel="noopener">View XML PDF</a>
+    {% endif %}
     <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#bidPackCompanyModal">Generate bid documents</button>
     {% if object.imported_reference %}<a class="btn btn-outline-secondary" href="{{ object.imported_reference }}" target="_blank" rel="noopener">Open ZPPA</a>{% endif %}
-    <a class="btn btn-primary" href="{% url 'tenders:update' object.pk %}">Edit</a>
   </div>
 </div>
 
@@ -186,7 +185,12 @@
             <h2 class="h5 mb-1">AI extracted bid instructions</h2>
             <p class="text-muted mb-0">Captured from the uploaded solicitation document. Confirm against the original before submission.</p>
           </div>
-          <a class="btn btn-sm btn-outline-primary" href="#ai-pane" data-open-tab="#ai-pane">Ask AI</a>
+          <div class="d-flex gap-2 flex-wrap">
+            {% if object.itb_11_items %}
+              <a class="btn btn-sm btn-primary" href="{% url 'tenders:download_xml_structure_pdf' object.pk %}">Download XML structure PDF</a>
+            {% endif %}
+            <a class="btn btn-sm btn-outline-primary" href="#ai-pane" data-open-tab="#ai-pane">Ask AI</a>
+          </div>
         </div>
         <div class="row g-3">
           {% if object.clarification_address %}
@@ -205,10 +209,10 @@
               </div>
             </div>
           {% endif %}
-          {% if object.itb_11_items %}
+          {% if expanded_xml_items %}
             <div class="col-12">
               <div class="xml-requirement-board">
-                {% regroup object.itb_11_items by envelope as envelope_groups %}
+                {% regroup expanded_xml_items by envelope as envelope_groups %}
                 {% for group in envelope_groups %}
                   <section class="xml-envelope-card">
                     <div class="xml-envelope-header">
@@ -267,7 +271,6 @@
           <h2 class="h5 mb-1">Requirement list</h2>
           <p class="text-muted mb-0">Keep this ordered the same way the solicitation document lists the requirements.</p>
         </div>
-        <a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:tender_requirement_create' object.pk %}">Add requirement</a>
       </div>
       <div class="requirement-timeline">
         {% for req in object.requirements.all %}

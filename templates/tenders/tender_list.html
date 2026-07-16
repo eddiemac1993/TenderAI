@@ -63,7 +63,10 @@
         <div class="tender-meta">
           <span>{{ tender.procuring_entity }}</span>
           <span>Published: {{ tender.published_at|date:"d/m/Y H:i"|default:"-" }}</span>
-          <span>Closing: {{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</span>
+          <span class="tender-closing-meta">
+            Closing: <strong>{{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</strong>
+            <span class="tender-days-left">{{ tender.days_left_label }}</span>
+          </span>
         </div>
         {% if tender.description %}
           <p class="text-muted mt-2 mb-0">{{ tender.description|truncatechars:180 }}</p>
@@ -71,9 +74,7 @@
       </div>
       <div class="tender-result-actions">
         <a class="btn btn-sm btn-primary" href="{{ tender.get_absolute_url }}">View</a>
-        <a class="btn btn-sm btn-outline-primary" href="{{ tender.get_absolute_url }}#ai-pane">AI / Upload</a>
         <a class="btn btn-sm btn-outline-success" href="{% url 'tenders:match' tender.pk %}">Match</a>
-        <a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:tasks' tender.pk %}">Tasks</a>
         {% if tender.imported_reference %}
           <a class="btn btn-sm btn-outline-secondary" href="{{ tender.imported_reference }}" target="_blank" rel="noopener">ZPPA</a>
         {% endif %}

@@ -25,5 +25,6 @@ urlpatterns = [
     path('<int:pk>/upload-solicitation/', views.upload_solicitation_document, name='upload_solicitation'),
     path('<int:pk>/fetch-zppa-solicitation/', views.fetch_zppa_solicitation_document, name='fetch_zppa_solicitation'),
     path('<int:pk>/fetch-zppa-documents/', views.fetch_zppa_all_public_documents, name='fetch_zppa_documents'),
+    path('<int:pk>/xml-structure.pdf', views.download_xml_structure_pdf, name='download_xml_structure_pdf'),
     path('<int:pk>/ask/', views.ask_tender_chatbot, name='ask_chatbot'),
 ]

@@ -1,10 +1,11 @@
 import json
+import os
 from datetime import timedelta
 
 from django.contrib import messages
 from django.db.models import Q
 from django.db.models.functions import Coalesce
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -17,13 +18,14 @@ from ai_engine.models import SolicitationDocument, TenderChatMessage
 from ai_engine.services import PlaceholderTenderAnalysisService
 from ai_engine.services import answer_tender_question
 from ai_engine.services import process_solicitation_document
-from bid_generator.services import document_gap_rows_for_company, xml_required_document_evidence
+from bid_generator.services import document_gap_rows_for_company, expanded_tender_xml_items, xml_required_document_evidence
 from companies.models import BusinessCategory, Company
 from core.tenancy import filter_queryset_for_user, user_organization
 from documents.models import CompanyDocument
 
 from .forms import BidTaskForm, TenderForm, TenderRequirementForm, ZppaJsonImportForm, ZppaManualImportForm, ZppaUrlImportForm
 from .models import BidTask, Tender, TenderMatch, TenderRequirement, ZppaScrapeLog
+from .pdf_exports import generate_xml_structure_pdf
 from .services import bid_task_progress, calculate_tender_matches, required_document_types, tender_decisions, tender_signals
 from .zppa_documents import PublicZppaDocumentFetcher
 from .zppa_scraper import bid_security_amount_from_detail_rows, import_public_zppa_tender_from_url, import_public_zppa_tenders, payment_amount_from_detail_rows
@@ -125,6 +127,7 @@ class TenderDetailView(DetailView):
         context['best_decision'] = decisions[0] if decisions else None
         context['top_decisions'] = decisions[:4]
         context['xml_evidence_summary'] = xml_required_document_evidence(self.object)
+        context['expanded_xml_items'] = expanded_tender_xml_items(self.object)
         if decisions:
             best_company = decisions[0]['match'].company
             context['best_company_document_gaps'] = document_gap_rows_for_company(self.object, best_company)
@@ -359,11 +362,7 @@ def scrape_zppa_today(request):
     try:
         imported = import_public_zppa_tenders(today_only=True, limit=10, write_log=True)
     except Exception as exc:
-        messages.error(
-            request,
-            'ZPPA scrape could not run from this server. PythonAnywhere free accounts may block outbound access to some public sites. '
-            f'The failure was logged: {exc}',
-        )
+        messages.error(request, zppa_scrape_error_message(exc))
         return HttpResponseRedirect(reverse('tenders:zppa_scrape_logs'))
     created_count = sum(1 for _, created in imported if created)
     updated_count = len(imported) - created_count
@@ -372,6 +371,20 @@ def scrape_zppa_today(request):
         f'Public ZPPA scrape finished: {created_count} created, {updated_count} updated.',
     )
     return HttpResponseRedirect(reverse('tenders:list'))
+
+
+def zppa_scrape_error_message(exc):
+    detail = str(exc)
+    lower = detail.lower()
+    if 'tunnel connection failed: 403' in lower or os.environ.get('PYTHONANYWHERE_DOMAIN'):
+        reason = 'PythonAnywhere free accounts may block outbound access to some public sites.'
+    elif 'getaddrinfo failed' in lower:
+        reason = 'Your local machine could not resolve the ZPPA website address. Check internet/DNS, then try again.'
+    elif 'timed out' in lower or 'timeout' in lower:
+        reason = 'The ZPPA public site did not respond before the local timeout. This can happen when the site is slow or temporarily unavailable.'
+    else:
+        reason = 'The public ZPPA site could not be reached from this machine.'
+    return f'ZPPA scrape could not run. {reason} The failure was logged: {detail}'
 
 
 class ZppaScrapeLogListView(ListView):
@@ -449,6 +462,16 @@ def fetch_zppa_all_public_documents(request, pk):
             + ' | '.join(skipped[:3])
         )
     return redirect(tender)
+
+
+def download_xml_structure_pdf(request, pk):
+    tender = get_object_or_404(Tender, pk=pk)
+    pdf_bytes = generate_xml_structure_pdf(tender)
+    filename = f'xml-structure-{tender.pk}.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    disposition = 'inline' if request.GET.get('inline') == '1' else 'attachment'
+    response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+    return response
 
 
 def ask_tender_chatbot(request, pk):

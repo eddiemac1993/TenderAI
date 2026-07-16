@@ -111,6 +111,7 @@ def xml_order_letter(index):
 
 def analyze_tender_document(document_text):
     return {
+        'cover_references': extract_cover_references(document_text),
         'required_documents': extract_required_documents(document_text),
         'ordered_bid_items': extract_ordered_bid_items(document_text),
         'clarification_address': '\n'.join(extract_address_lines(document_text, mode='clarification')),
@@ -123,6 +124,43 @@ def analyze_tender_document(document_text):
         'bid_security_required': 'bid security' in document_text.lower() or 'bid securing declaration' in document_text.lower(),
         'site_visit_required': 'site visit' in document_text.lower() or 'mandatory visit' in document_text.lower(),
     }
+
+
+def extract_cover_references(document_text):
+    cover_text = '\n'.join(document_text.splitlines()[:120])
+    compact_cover = re.sub(r'[ \t]+', ' ', cover_text)
+    return {
+        'tender_number': extract_reference_number(compact_cover, [
+            r'\bTender\s*(?:No\.?|Number|Reference(?:\s*No\.?)?|Ref\.?)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+            r'\bProcurement\s*(?:Reference(?:\s*No\.?)?|Ref\.?)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+            r'\bSolicitation\s*(?:No\.?|Number)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+        ]),
+        'invitation_number': extract_reference_number(compact_cover, [
+            r'\bInvitation\s*(?:for\s*Bids?|to\s*Bid)?\s*(?:No\.?|Number|Reference(?:\s*No\.?)?|Ref\.?)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+            r'\bIFB\s*(?:No\.?|Number)?\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+            r'\bBidding\s*(?:No\.?|Number)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+        ]),
+    }
+
+
+def extract_reference_number(text, patterns):
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, re.I):
+            value = clean_reference_number(match.group('value'))
+            if value:
+                return value
+    return ''
+
+
+def clean_reference_number(value):
+    value = re.sub(r'^[\s:;#.-]+|[\s:;,.)]+$', '', str(value or '').strip())
+    if len(value) < 3:
+        return ''
+    if not re.search(r'\d', value):
+        return ''
+    if value.lower() in {'no', 'number', 'ref', 'reference'}:
+        return ''
+    return value
 
 
 def extract_required_documents(document_text):
@@ -208,6 +246,7 @@ def extract_qualification_forms(document_text):
 FORM_TEMPLATE_PATTERNS = [
     ('LETTER_OF_BID', 'Letter of Bid', ['letter of bid', 'bid submission form', 'form of bid']),
     ('BID_SECURING_DECLARATION', 'Bid-Securing Declaration', ['bid-securing declaration', 'bid securing declaration']),
+    ('POWER_OF_ATTORNEY', 'Power of Attorney', ['power of attorney form', 'form of power of attorney', 'power of attorney template']),
     ('ELI 1.1', 'Bidder Information Sheet', ['form eli 1.1', 'eli 1.1', 'bidder information sheet']),
     ('ELI 1.2', 'Party to JV Information Sheet', ['form eli 1.2', 'eli 1.2', 'party to jv information sheet']),
     ('CON-2', 'Historical Contract Non-Performance', ['form con-2', 'con-2', 'historical contract non-performance']),
@@ -650,7 +689,12 @@ def update_tender_from_analysis(tender, analysis):
     clarification_address = analysis.get('clarification_address', '').strip()
     submission_address = analysis.get('submission_address', '').strip()
     itb_11_items = analysis.get('ordered_bid_items') or []
+    cover_references = analysis.get('cover_references') or {}
+    cover_tender_number = str(cover_references.get('tender_number') or '').strip()
 
+    if cover_tender_number and tender.tender_number != cover_tender_number:
+        tender.tender_number = cover_tender_number
+        fields.append('tender_number')
     if clarification_address and tender.clarification_address != clarification_address:
         tender.clarification_address = clarification_address
         fields.append('clarification_address')

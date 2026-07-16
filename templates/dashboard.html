@@ -14,6 +14,19 @@
   </div>
 </section>
 
+<div class="workspace-mode-grid mb-4">
+  <div class="workspace-mode-card workspace-mode-local">
+    <span class="document-type">Local Workspace</span>
+    <h2 class="h5 mb-2">Bid preparation on this computer</h2>
+    <p class="mb-0">Use this side for ZPPA scraping, XML analysis, company documents, certificates, profiles, and generated bid packs.</p>
+  </div>
+  <div class="workspace-mode-card workspace-mode-online">
+    <span class="document-type">Online Team Workspace</span>
+    <h2 class="h5 mb-2">Team login and progress online</h2>
+    <p class="mb-0">Use this side for organizations, users, team progress, help chat, admin review, and hosted collaboration.</p>
+  </div>
+</div>
+
 <div class="metric-grid mb-4">
   <a class="metric-card" href="{% url 'companies:list' %}"><span>Companies</span><strong>{{ company_count }}</strong></a>
   <a class="metric-card" href="{% url 'tenders:list' %}"><span>Total tenders</span><strong>{{ total_tenders }}</strong></a>
@@ -64,7 +77,7 @@
               <strong>{{ tender.title }}</strong>
               <span class="badge text-bg-{{ tender.urgency_class }}">{{ tender.urgency_label }}</span>
             </div>
-            <small class="text-muted">{{ tender.procuring_entity }} · {{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date }}</small>
+            <small class="text-muted">{{ tender.procuring_entity }} - {{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date }}</small>
           </a>
         {% empty %}
           <div class="empty-state">No tenders closing in the next 14 days.</div>

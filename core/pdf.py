@@ -65,7 +65,8 @@ def letterhead_elements(company, document_title):
     ]
     elements.append(Paragraph(' | '.join([item for item in details if item]), style['SmallMuted']))
     elements.append(Spacer(1, 10))
-    elements.append(Paragraph(f'<b>{document_title}</b>', style['Heading1']))
+    if document_title:
+        elements.append(Paragraph(f'<b>{document_title}</b>', style['Heading1']))
     return elements
 
 
