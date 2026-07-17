@@ -54,8 +54,8 @@
           {% endif %}
           {% if tenderai_user.has_full_access %}<a class="sidebar-link" href="{% url 'core:support_chat' %}">Team help chat</a>{% endif %}
           {% if user.is_superuser %}
-            <a class="sidebar-link" href="{% url 'admin:core_userprofile_changelist' %}">User Access</a>
-            <a class="sidebar-link" href="{% url 'admin:index' %}">Admin</a>
+            <a class="sidebar-link sidebar-link-primary" href="{% url 'core:superuser_dashboard' %}">Superuser Admin</a>
+            <a class="sidebar-link" href="{% url 'admin:index' %}">Django Admin</a>
           {% endif %}
         </div>
 
@@ -68,7 +68,7 @@
           <a class="sidebar-link" href="{% url 'core:open_project_folder' %}">Project Folder</a>
           {% if user.is_authenticated %}
             {% if user.is_superuser %}
-              <a class="sidebar-link sidebar-link-primary" href="{% url 'admin:index' %}">Superuser Admin</a>
+              <a class="sidebar-link" href="{% url 'core:superuser_dashboard' %}">User subscriptions</a>
             {% else %}
               <span class="sidebar-link sidebar-link-muted">{{ tenderai_user.access_status }}</span>
             {% endif %}

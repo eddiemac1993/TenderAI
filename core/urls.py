@@ -7,6 +7,7 @@ from .views import (
     MessageThreadDetailView,
     OrganizationCreateView,
     OrganizationListView,
+    SuperuserDashboardView,
     SupportChatAdminListView,
     SupportChatDetailView,
     SupportChatStartView,
@@ -18,6 +19,7 @@ from .views import (
     open_project_folder,
     reply_message_thread,
     run_app_update,
+    update_user_access,
 )
 
 app_name = 'core'
@@ -30,6 +32,8 @@ urlpatterns = [
     path('organizations/', OrganizationListView.as_view(), name='organizations'),
     path('organizations/new/', OrganizationCreateView.as_view(), name='organization_create'),
     path('team/users/new/', TeamUserCreateView.as_view(), name='team_user_create'),
+    path('superuser/', SuperuserDashboardView.as_view(), name='superuser_dashboard'),
+    path('superuser/users/<int:pk>/access/', update_user_access, name='update_user_access'),
     path('messages/', MessageBoardView.as_view(), name='message_board'),
     path('messages/new/', MessageThreadCreateView.as_view(), name='message_thread_create'),
     path('messages/<int:pk>/', MessageThreadDetailView.as_view(), name='message_thread_detail'),

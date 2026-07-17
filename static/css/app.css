@@ -819,6 +819,35 @@ h6,
   line-height: 1.6;
 }
 
+.superuser-access-form {
+  min-width: 520px;
+}
+
+.superuser-access-grid {
+  align-items: end;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 72px 150px minmax(180px, 1fr) auto auto;
+}
+
+.superuser-access-grid .form-label {
+  color: var(--app-muted);
+  font-weight: 800;
+  margin-bottom: 0.2rem;
+}
+
+.superuser-date-field input {
+  min-width: 180px;
+}
+
+.superuser-pro-check {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  margin: 0 0 0.45rem;
+  white-space: nowrap;
+}
+
 .warning-stack {
   display: grid;
   gap: 0.75rem;
@@ -2150,6 +2179,18 @@ textarea.form-control {
   .message-thread-meta {
     min-width: 0;
     text-align: left;
+  }
+
+  .superuser-access-form {
+    min-width: 0;
+  }
+
+  .superuser-access-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .superuser-pro-check {
+    margin-bottom: 0;
   }
 
   .hero-actions,

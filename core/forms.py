@@ -190,3 +190,29 @@ class MessageReplyForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['body'].widget.attrs.setdefault('class', 'form-control')
+
+
+class UserAccessUpdateForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ['access_days', 'is_pro', 'full_access_until', 'role']
+        widgets = {
+            'full_access_until': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+        labels = {
+            'access_days': 'Access days',
+            'is_pro': 'Pro',
+            'full_access_until': 'Full access until',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.full_access_until:
+            self.fields['full_access_until'].initial = timezone.localtime(self.instance.full_access_until).strftime('%Y-%m-%dT%H:%M')
+        for name, field in self.fields.items():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.setdefault('class', 'form-check-input')
+            elif isinstance(field.widget, forms.Select):
+                field.widget.attrs.setdefault('class', 'form-select form-select-sm')
+            else:
+                field.widget.attrs.setdefault('class', 'form-control form-control-sm')

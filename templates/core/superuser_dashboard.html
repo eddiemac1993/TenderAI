@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Superuser Admin - TenderAI{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow mb-1">TenderAI control center</p>
+    <h1 class="h3 mb-1">Superuser Admin</h1>
+    <p class="text-muted mb-0">Manage user access, Pro status, login sessions, organizations, and user interactions from inside TenderAI.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-primary" href="{% url 'core:team_user_create' %}">Add user</a>
+    <a class="btn btn-outline-secondary" href="{% url 'admin:index' %}">Django Admin</a>
+  </div>
+</div>
+
+<div class="metric-grid mb-3">
+  <div class="metric-card">
+    <span>Total users</span>
+    <strong>{{ total_users }}</strong>
+  </div>
+  <div class="metric-card">
+    <span>Active users</span>
+    <strong>{{ active_users }}</strong>
+  </div>
+  <div class="metric-card">
+    <span>Pro users</span>
+    <strong>{{ pro_users }}</strong>
+  </div>
+  <div class="metric-card">
+    <span>Limited users</span>
+    <strong>{{ limited_users }}</strong>
+  </div>
+</div>
+
+<div class="section-panel mb-3">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow mb-1">Subscriptions and login status</p>
+      <h2 class="h5 mb-0">Users</h2>
+    </div>
+    <span class="text-muted small">Pro users can login on more than one device.</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table app-table align-middle">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Organization</th>
+          <th>Login</th>
+          <th>Interaction</th>
+          <th>Access control</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for profile in profiles %}
+          <tr>
+            <td>
+              <strong>{{ profile.user.username }}</strong>
+              {% if profile.user.is_superuser %}<span class="status-chip status-chip-warning ms-1">Superuser</span>{% endif %}
+              {% if profile.user.email %}<div class="small text-muted">{{ profile.user.email }}</div>{% endif %}
+              <div class="small text-muted">{{ profile.get_role_display }}</div>
+            </td>
+            <td>
+              {{ profile.organization|default:"-" }}
+              {% if profile.phone %}<div class="small text-muted">{{ profile.phone }}</div>{% endif %}
+            </td>
+            <td>
+              <div><strong>{{ profile.access_status }}</strong></div>
+              <div class="small text-muted">Last login: {{ profile.user.last_login|date:"d/m/Y H:i"|default:"Never" }}</div>
+              <div class="small text-muted">
+                Session:
+                {% if profile.active_session_key %}
+                  Active since {{ profile.active_session_started_at|date:"d/m/Y H:i"|default:"unknown" }}
+                {% else %}
+                  Not locked
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <div>{{ profile.message_threads_count }} thread{{ profile.message_threads_count|pluralize }}</div>
+              <div class="small text-muted">{{ profile.message_posts_count }} message{{ profile.message_posts_count|pluralize }}</div>
+            </td>
+            <td>
+              <form method="post" action="{% url 'core:update_user_access' profile.pk %}" class="superuser-access-form">
+                {% csrf_token %}
+                <div class="superuser-access-grid">
+                  <div>
+                    <label class="form-label small" for="{{ profile.access_form.access_days.id_for_label }}">Days</label>
+                    {{ profile.access_form.access_days }}
+                  </div>
+                  <div>
+                    <label class="form-label small" for="{{ profile.access_form.role.id_for_label }}">Role</label>
+                    {{ profile.access_form.role }}
+                  </div>
+                  <div class="superuser-date-field">
+                    <label class="form-label small" for="{{ profile.access_form.full_access_until.id_for_label }}">Until</label>
+                    {{ profile.access_form.full_access_until }}
+                  </div>
+                  <label class="form-check superuser-pro-check">
+                    {{ profile.access_form.is_pro }}
+                    <span class="form-check-label">Pro</span>
+                  </label>
+                  <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                </div>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-muted">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="section-panel h-100">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow mb-1">User interactions</p>
+          <h2 class="h5 mb-0">Recent message board activity</h2>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'core:message_board' %}">Open board</a>
+      </div>
+      <div class="message-thread-list">
+        {% for thread in recent_messages %}
+          <a class="message-thread-card" href="{{ thread.get_absolute_url }}">
+            <div>
+              <h3 class="h6 mb-1">{{ thread.subject }}</h3>
+              <p class="text-muted mb-0">{{ thread.get_visibility_display }} · {{ thread.created_by.username }}</p>
+            </div>
+            <div class="message-thread-meta">
+              <span>{{ thread.updated_at|date:"d/m/Y H:i" }}</span>
+            </div>
+          </a>
+        {% empty %}
+          <div class="empty-state">No message board activity yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="section-panel h-100">
+      <p class="eyebrow mb-1">Support status</p>
+      <h2 class="h5">Open help chats</h2>
+      <p class="display-title mb-2">{{ open_support_chats }}</p>
+      <p class="text-muted">Use this number to see whether users are asking for help or reporting confusion.</p>
+      <a class="btn btn-outline-primary" href="{% url 'core:support_chat_admin' %}">Review help chats</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

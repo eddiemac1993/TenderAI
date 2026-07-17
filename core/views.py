@@ -4,6 +4,7 @@ import sys
 from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import login, logout
+from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import models
@@ -20,7 +21,7 @@ from django.views.generic import UpdateView
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 
-from .forms import MessageReplyForm, MessageThreadForm, OrganizationForm, PublicRegistrationForm, SupportChatAdminReplyForm, SupportChatQuestionForm, SupportChatStartForm, SystemSettingsForm, TeamUserCreateForm, TenderAILoginForm
+from .forms import MessageReplyForm, MessageThreadForm, OrganizationForm, PublicRegistrationForm, SupportChatAdminReplyForm, SupportChatQuestionForm, SupportChatStartForm, SystemSettingsForm, TeamUserCreateForm, TenderAILoginForm, UserAccessUpdateForm
 from .models import MessagePost, MessageThread, Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 from .support_ai import answer_support_question
 from .tenancy import filter_queryset_for_user, user_can_manage_users, user_organization
@@ -111,6 +112,11 @@ class RegisterView(FormView):
 class TeamManagementRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         return user_can_manage_users(self.request.user)
+
+
+class SuperuserRequiredMixin(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.is_superuser
 
 
 class OrganizationListView(TeamManagementRequiredMixin, ListView):
@@ -405,3 +411,51 @@ def reply_message_thread(request, pk):
     else:
         messages.error(request, 'Please type a reply.')
     return redirect(thread)
+
+
+class SuperuserDashboardView(SuperuserRequiredMixin, TemplateView):
+    template_name = 'core/superuser_dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        for user in User.objects.filter(profile__isnull=True):
+            UserProfile.objects.get_or_create(user=user)
+
+        profiles = list(
+            UserProfile.objects.select_related('user', 'organization')
+            .annotate(
+                message_posts_count=models.Count('user__message_posts', distinct=True),
+                message_threads_count=models.Count('user__message_threads', distinct=True),
+            )
+            .order_by('-user__last_login', 'user__username')
+        )
+        for profile in profiles:
+            profile.access_form = UserAccessUpdateForm(instance=profile)
+        context['profiles'] = profiles
+        context['total_users'] = len(profiles)
+        context['active_users'] = sum(1 for profile in profiles if profile.user.is_active)
+        context['pro_users'] = sum(1 for profile in profiles if profile.is_pro)
+        context['limited_users'] = sum(1 for profile in profiles if not profile.has_full_access and not profile.user.is_superuser)
+        context['recent_messages'] = MessageThread.objects.select_related('created_by', 'recipient').order_by('-updated_at')[:8]
+        context['open_support_chats'] = SupportChatSession.objects.exclude(status=SupportChatSession.Status.CLOSED).count()
+        return context
+
+
+@require_POST
+def update_user_access(request, pk):
+    if not request.user.is_superuser:
+        messages.error(request, 'Only the superuser can update access settings.')
+        return redirect('dashboard')
+    profile = get_object_or_404(UserProfile.objects.select_related('user'), pk=pk)
+    form = UserAccessUpdateForm(request.POST, instance=profile)
+    if form.is_valid():
+        updated_profile = form.save(commit=False)
+        if updated_profile.access_days and not updated_profile.access_granted_at:
+            updated_profile.access_granted_at = timezone.now()
+        if not updated_profile.access_days:
+            updated_profile.access_granted_at = None
+        updated_profile.save()
+        messages.success(request, f'Access updated for {profile.user.username}.')
+    else:
+        messages.error(request, f'Could not update {profile.user.username}. Check the values and try again.')
+    return redirect('core:superuser_dashboard')
