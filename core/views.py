@@ -3,7 +3,7 @@ import sys
 
 from django.contrib import messages
 from django.conf import settings
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect
@@ -53,6 +53,12 @@ class TenderAILoginView(LoginView):
             profile.active_session_started_at = timezone.now()
             profile.save(update_fields=['active_session_key', 'active_session_started_at'])
         return response
+
+
+def tenderai_logout(request):
+    logout(request)
+    messages.success(request, 'You have been logged out.')
+    return redirect('login')
 
 
 class RegisterView(FormView):

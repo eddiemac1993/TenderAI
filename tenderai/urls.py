@@ -19,7 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from core.views import AppUpdateView, RegisterView, TenderAILoginView, run_app_update
+from core.views import AppUpdateView, RegisterView, TenderAILoginView, run_app_update, tenderai_logout
 
 from .views import AboutView, DashboardView
 
@@ -28,6 +28,7 @@ urlpatterns = [
     path('about/', AboutView.as_view(), name='about'),
     path('admin/', admin.site.urls),
     path('accounts/login/', TenderAILoginView.as_view(), name='login'),
+    path('accounts/logout/', tenderai_logout, name='logout'),
     path('accounts/register/', RegisterView.as_view(), name='register'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('updates/', AppUpdateView.as_view(), name='app_update_direct'),
