@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 
 from .models import Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 
@@ -17,9 +18,43 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'organization', 'role', 'phone', 'created_at')
-    list_filter = ('organization', 'role')
+    list_display = ('user', 'organization', 'role', 'access_status', 'is_pro', 'access_days', 'access_expires_at', 'phone', 'created_at')
+    list_filter = ('organization', 'role', 'is_pro', 'access_days', 'full_access_until')
     search_fields = ('user__username', 'user__email', 'organization__name')
+    readonly_fields = ('access_granted_at', 'active_session_key', 'active_session_started_at', 'created_at')
+    actions = ('grant_7_days', 'grant_30_days', 'revoke_full_access')
+    fieldsets = (
+        ('User and organization', {
+            'fields': ('user', 'organization', 'role', 'phone'),
+        }),
+        ('Access control', {
+            'fields': ('is_pro', 'access_days', 'access_granted_at', 'full_access_until', 'active_session_key', 'active_session_started_at'),
+            'description': 'Enter access_days for paid access duration, or mark is_pro to allow full access and multiple devices. full_access_until is optional for a fixed expiry date.',
+        }),
+        ('Audit', {
+            'fields': ('created_at',),
+        }),
+    )
+
+    @admin.action(description='Grant full access for 7 days')
+    def grant_7_days(self, request, queryset):
+        self.grant_days(queryset, 7)
+
+    @admin.action(description='Grant full access for 30 days')
+    def grant_30_days(self, request, queryset):
+        self.grant_days(queryset, 30)
+
+    @admin.action(description='Revoke full access and Pro')
+    def revoke_full_access(self, request, queryset):
+        queryset.update(is_pro=False, access_days=0, access_granted_at=None, full_access_until=None)
+
+    def grant_days(self, queryset, days):
+        now = timezone.now()
+        for profile in queryset:
+            if not profile.access_granted_at:
+                profile.access_granted_at = now
+            profile.access_days = max(profile.access_days, 0) + days
+            profile.save(update_fields=['access_days', 'access_granted_at'])
 
 
 class SupportChatMessageInline(admin.TabularInline):

@@ -14,6 +14,13 @@
   </div>
 </section>
 
+{% if user.is_authenticated and not tenderai_user.has_full_access %}
+  <div class="alert alert-warning">
+    <strong>Limited access:</strong> you can use the dashboard, scrape public ZPPA tenders, view tenders, and import a tender by URL.
+    Companies, documents, bid packs, AI analysis, and team features unlock when the admin grants full access days or marks your account as Pro.
+  </div>
+{% endif %}
+
 <div class="workspace-mode-grid mb-4">
   <div class="workspace-mode-card workspace-mode-local">
     <span class="document-type">Local Workspace</span>
@@ -28,10 +35,18 @@
 </div>
 
 <div class="metric-grid mb-4">
-  <a class="metric-card" href="{% url 'companies:list' %}"><span>Companies</span><strong>{{ company_count }}</strong></a>
+  {% if tenderai_user.has_full_access %}
+    <a class="metric-card" href="{% url 'companies:list' %}"><span>Companies</span><strong>{{ company_count }}</strong></a>
+  {% else %}
+    <span class="metric-card"><span>Companies locked</span><strong>{{ company_count }}</strong></span>
+  {% endif %}
   <a class="metric-card" href="{% url 'tenders:list' %}"><span>Total tenders</span><strong>{{ total_tenders }}</strong></a>
   <a class="metric-card metric-warning" href="{% url 'tenders:list' %}?period=closing_7"><span>Closing in 7 days</span><strong>{{ closing_7_days|length }}</strong></a>
-  <a class="metric-card metric-warning" href="{% url 'documents:list' %}?status=expiring_30"><span>Docs expiring soon</span><strong>{{ expiring_documents|length }}</strong></a>
+  {% if tenderai_user.has_full_access %}
+    <a class="metric-card metric-warning" href="{% url 'documents:list' %}?status=expiring_30"><span>Docs expiring soon</span><strong>{{ expiring_documents|length }}</strong></a>
+  {% else %}
+    <span class="metric-card metric-warning"><span>Docs locked</span><strong>{{ expiring_documents|length }}</strong></span>
+  {% endif %}
 </div>
 
 <div class="row g-4">

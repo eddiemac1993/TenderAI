@@ -318,30 +318,6 @@
     </div>
   </div>
   {% endif %}
-  <div class="col-lg-7">
-    <div class="section-panel">
-      <h2 class="h5">Bid checklist</h2>
-      <div class="requirement-timeline">
-        {% for item in checklist %}
-          <div class="requirement-item">
-            <div class="requirement-number">{{ forloop.counter }}</div>
-            <div>{{ item }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-5">
-    <div class="section-panel">
-      <h2 class="h5">Included sections</h2>
-      <div class="readiness-list">
-        <div class="readiness-row"><strong>Cover letter</strong><span class="badge text-bg-{% if object.include_cover_letter %}success{% else %}secondary{% endif %}">{{ object.include_cover_letter|yesno:"Included,Skipped" }}</span></div>
-        <div class="readiness-row"><strong>Bid checklist</strong><span class="badge text-bg-{% if object.include_checklist %}success{% else %}secondary{% endif %}">{{ object.include_checklist|yesno:"Included,Skipped" }}</span></div>
-        <div class="readiness-row"><strong>Company profile</strong><span class="badge text-bg-{% if object.include_company_profile %}success{% else %}secondary{% endif %}">{{ object.include_company_profile|yesno:"Included,Skipped" }}</span></div>
-        <div class="readiness-row"><strong>Price schedule</strong><span class="badge text-bg-{% if object.include_price_schedule %}success{% else %}secondary{% endif %}">{{ object.include_price_schedule|yesno:"Included,Skipped" }}</span></div>
-      </div>
-    </div>
-  </div>
   {% if ordered_attachments %}
   <div class="col-12">
     <div class="section-panel">

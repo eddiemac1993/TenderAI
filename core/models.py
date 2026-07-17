@@ -1,6 +1,7 @@
 from django.db import models
 from django.urls import reverse
 from django.conf import settings
+from django.utils import timezone
 
 from quotations.models import TaxType
 
@@ -31,6 +32,12 @@ class UserProfile(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='members', null=True, blank=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STAFF)
     phone = models.CharField(max_length=60, blank=True)
+    is_pro = models.BooleanField(default=False, help_text='Pro users can use TenderAI on multiple devices at the same time.')
+    access_days = models.PositiveIntegerField(default=0, help_text='Number of full-access days granted by admin. Use 0 for limited access.')
+    access_granted_at = models.DateTimeField(null=True, blank=True)
+    full_access_until = models.DateTimeField(null=True, blank=True, help_text='Leave blank for limited access unless the user is Pro.')
+    active_session_key = models.CharField(max_length=80, blank=True)
+    active_session_started_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -42,6 +49,41 @@ class UserProfile(models.Model):
     @property
     def can_manage_users(self):
         return self.role == self.Role.ORG_ADMIN or self.user.is_superuser
+
+    @property
+    def has_full_access(self):
+        if self.user.is_superuser:
+            return True
+        if self.is_pro:
+            return True
+        expiry = self.access_expires_at
+        return bool(expiry and expiry >= timezone.now())
+
+    @property
+    def access_expires_at(self):
+        expiries = []
+        if self.full_access_until:
+            expiries.append(self.full_access_until)
+        if self.access_days and self.access_granted_at:
+            expiries.append(self.access_granted_at + timezone.timedelta(days=self.access_days))
+        return max(expiries) if expiries else None
+
+    @property
+    def access_status(self):
+        if self.user.is_superuser:
+            return 'Superuser'
+        if self.is_pro:
+            return 'Pro'
+        if self.has_full_access:
+            return f'Full access until {timezone.localtime(self.access_expires_at):%d/%m/%Y %H:%M}'
+        return 'Limited access'
+
+    def save(self, *args, **kwargs):
+        if self.access_days and not self.access_granted_at:
+            self.access_granted_at = timezone.now()
+        if not self.access_days:
+            self.access_granted_at = None
+        super().save(*args, **kwargs)
 
 
 class SystemSettings(models.Model):

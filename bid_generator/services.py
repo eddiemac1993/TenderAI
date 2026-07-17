@@ -1,5 +1,6 @@
 from io import BytesIO
 import re
+from html import escape
 
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
@@ -432,8 +433,14 @@ def prepared_output_for_xml_item(bid_pack, item):
     if 'bid declaration' in text or 'bid securing' in text or 'bid security' in text:
         return 'Bid-Securing Declaration form'
     if is_letter_of_bid_requirement(text):
+        if is_price_schedule_requirement(text):
+            return 'Letter of Bid plus Price Schedule'
         return 'Letter of Bid / Tender Submission Letter'
+    if is_power_of_attorney_requirement(text):
+        return 'Power of Attorney / Signatory Authorisation form'
     if form_code:
+        if form_code == 'MFR':
+            return "Manufacturer's Authorisation form"
         return f'Qualification form {form_code}'
     matched_document = match_company_document_for_xml_item(bid_pack, item)
     if matched_document:
@@ -777,11 +784,17 @@ def tender_reference_numbers(tender):
 
 
 def latest_cover_references(tender):
-    document = tender.solicitation_documents.order_by('-uploaded_at').first()
-    if not document:
-        return {}
-    summary = document.analysis_summary or {}
-    return summary.get('cover_references') or {}
+    references = {}
+    for document in tender.solicitation_documents.order_by('-uploaded_at'):
+        summary = document.analysis_summary or {}
+        document_references = summary.get('cover_references') or {}
+        for key in ['tender_number', 'invitation_number']:
+            value = str(document_references.get(key) or '').strip()
+            if value and not references.get(key):
+                references[key] = value
+        if references.get('tender_number') and references.get('invitation_number'):
+            break
+    return references
 
 
 def letter_of_bid_declarations(context):
@@ -810,7 +823,10 @@ def add_pdf_letter_of_bid(elements, bid_pack, style):
     form_style = zppa_form_styles(style)
     elements.append(Paragraph('LETTER OF BID / BID SUBMISSION FORM', form_style['title']))
     elements.append(Spacer(1, 8))
-    for line in letter_of_bid_field_lines(context):
+    for line in letter_of_bid_reference_lines(context):
+        elements.append(Paragraph(line, form_style['right']))
+    elements.append(Spacer(1, 8))
+    for line in letter_of_bid_recipient_lines(context):
         elements.append(Paragraph(line, form_style['body']))
     elements.append(Spacer(1, 10))
     elements.append(Paragraph('We, the undersigned, declare that:', form_style['body']))
@@ -830,12 +846,20 @@ def add_pdf_letter_of_bid(elements, bid_pack, style):
 
 
 def letter_of_bid_field_lines(context):
+    return letter_of_bid_reference_lines(context) + letter_of_bid_recipient_lines(context)
+
+
+def letter_of_bid_reference_lines(context):
     return [
         f'Date: {context["date"]}',
         f'Bidding No.: {context["bidding_no"]}',
         f'Invitation for Bid No.: {context["invitation_no"]}',
+    ]
+
+
+def letter_of_bid_recipient_lines(context):
+    return [
         f'To: {context["to"]}',
-        f'Bidder: {context["company"]}',
     ]
 
 
@@ -850,27 +874,30 @@ def letter_of_bid_signature_lines(context):
 
 
 def add_docx_letter_of_bid(document, bid_pack):
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
     context = letter_of_bid_context(bid_pack)
-    document.add_paragraph('The Bidder should prepare this Letter of Bid on company letterhead showing the complete name and address.')
-    table = document.add_table(rows=1, cols=2)
-    table.style = 'Table Grid'
-    table.rows[0].cells[0].text = 'Field'
-    table.rows[0].cells[1].text = 'Value'
-    for field, value in [
-        ('Date', context['date']),
-        ('Bidding No.', context['bidding_no']),
-        ('Invitation for Bid No.', context['invitation_no']),
-        ('To', context['to']),
-        ('Bidder', context['company']),
-    ]:
-        cells = table.add_row().cells
-        cells[0].text = field
-        cells[1].text = str(value)
-    document.add_paragraph('We, the undersigned, declare that:')
+    p = document.add_paragraph('LETTER OF BID / BID SUBMISSION FORM')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_docx_paragraph_font(p, size=13, bold=True)
+    for line in letter_of_bid_reference_lines(context):
+        p = document.add_paragraph(line)
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        set_docx_paragraph_font(p)
+    for line in letter_of_bid_recipient_lines(context):
+        p = document.add_paragraph(line)
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        set_docx_paragraph_font(p)
+    p = document.add_paragraph('We, the undersigned, declare that:')
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    set_docx_paragraph_font(p)
     for index, declaration in enumerate(letter_of_bid_declarations(context), start=1):
         letter = chr(96 + index)
-        document.add_paragraph(f'({letter}) {declaration}')
-    document.add_paragraph('Commissions, gratuities, or fees:')
+        p = document.add_paragraph(f'({letter}) {declaration}')
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        set_docx_paragraph_font(p)
+    p = document.add_paragraph('Commissions, gratuities, or fees:')
+    set_docx_paragraph_font(p)
     commission_table = document.add_table(rows=2, cols=4)
     commission_table.style = 'Table Grid'
     for idx, heading in enumerate(['Name of Recipient', 'Address', 'Reason', 'Amount']):
@@ -890,6 +917,197 @@ def add_docx_letter_of_bid(document, bid_pack):
         cells = signature_table.add_row().cells
         cells[0].text = field
         cells[1].text = str(value)
+
+
+def add_pdf_price_schedule_form(elements, bid_document, style):
+    bid_pack = bid_document.bid_pack
+    references = tender_reference_numbers(bid_pack.tender)
+    form_style = zppa_form_styles(style)
+    elements.append(Paragraph('Price Schedule: Goods', form_style['title']))
+    elements.append(Spacer(1, 8))
+
+    small = style['BodyText'].clone('PriceScheduleSmall')
+    small.fontName = 'Times-Roman'
+    small.fontSize = 7
+    small.leading = 8
+    small.alignment = 1
+    tiny = small.clone('PriceScheduleTiny')
+    tiny.fontSize = 6
+    tiny.leading = 7
+    tiny.alignment = 1
+    bold = small.clone('PriceScheduleBold')
+    bold.fontName = 'Times-Bold'
+
+    reference_block = [
+        Paragraph(f'Date: {timezone.localdate().strftime("%d/%m/%Y")}', small),
+        Paragraph(f'PBN No.: {references["tender_number"]}', small),
+        Paragraph('Alternative No.: Not applicable', small),
+        Paragraph('Page No.: ____ of ____', small),
+    ]
+    top_table = Table(
+        [['', reference_block]],
+        colWidths=[285, 190],
+        rowHeights=[72],
+        style=price_schedule_outer_style(),
+    )
+    elements.append(top_table)
+
+    number_row = ['1', '2', '3', '4', '5', '6', '7']
+    header_row = [
+        Paragraph('Line Item<br/>No', bold),
+        Paragraph('Description of Goods', bold),
+        Paragraph('Delivery Date', bold),
+        Paragraph('Quantity and<br/>physical unit', bold),
+        Paragraph('Unit price DDP', bold),
+        Paragraph('Total price per line item<br/>(Col. 4 x 5)', bold),
+        Paragraph('Country of Origin', bold),
+    ]
+    instruction_row = [
+        Paragraph('[insert<br/>number of<br/>the item]', tiny),
+        Paragraph('[insert name of Good]', tiny),
+        Paragraph('[insert quoted<br/>Delivery Date]', tiny),
+        Paragraph('[insert number of units to<br/>be supplied and name of<br/>the physical unit]', tiny),
+        Paragraph('[insert unit price]', tiny),
+        Paragraph('[insert total price per line<br/>item]', tiny),
+        '',
+    ]
+    blank_rows = [['', '', '', '', '', '', ''] for _ in range(9)]
+    table_rows = [number_row, header_row, instruction_row] + blank_rows
+    table = Table(
+        table_rows,
+        colWidths=[40, 90, 55, 75, 65, 85, 65],
+        rowHeights=[12, 34, 34] + [21] * len(blank_rows),
+        style=price_schedule_table_style(),
+    )
+    elements.append(table)
+    total_table = Table(
+        [[Paragraph('Total Price: Goods', bold), '']],
+        colWidths=[185, 100],
+        rowHeights=[24],
+        style=price_schedule_total_style(),
+    )
+    total_table.hAlign = 'CENTER'
+    elements.append(total_table)
+
+
+def add_pdf_power_of_attorney_form(elements, bid_document, style):
+    bid_pack = bid_document.bid_pack
+    tender = bid_pack.tender
+    company = bid_pack.company
+    references = tender_reference_numbers(tender)
+    form_style = zppa_form_styles(style)
+    elements.append(Paragraph('POWER OF ATTORNEY / AUTHORISATION OF SIGNATORY', form_style['title']))
+    elements.append(Spacer(1, 8))
+    reference_rows = plain_field_rows([
+        ('Date', timezone.localdate().strftime('%d/%m/%Y')),
+        ('Tender / Procurement No.', references['tender_number']),
+        ('Tender title', tender.title),
+        ('Procuring entity', tender.procuring_entity or '-'),
+        ('Bidder', company.name),
+    ], style)
+    reference_table = Table(reference_rows, colWidths=[150, 220], style=plain_field_table_style())
+    reference_table.hAlign = 'RIGHT'
+    elements.append(reference_table)
+    elements.append(Spacer(1, 10))
+
+    paragraphs = [
+        (
+            f'We, {company.name}, being a duly registered company participating in the above tender, '
+            'hereby appoint the person named below as our true and lawful authorised representative for purposes of this bid.'
+        ),
+        (
+            'The authorised representative is empowered to sign, initial, submit, clarify, and otherwise commit the bidder '
+            'in all documents and actions required for this tender, including the Bid Submission Form, Bid-Securing Declaration, '
+            'price schedules, declarations, undertakings, and any related correspondence with the Procuring Entity.'
+        ),
+        (
+            'This authority applies only to the tender identified above and remains valid for the bid validity period and any '
+            'extension accepted by the bidder, unless revoked in writing by the company.'
+        ),
+    ]
+    for paragraph in paragraphs:
+        elements.append(Paragraph(paragraph, form_style['body']))
+
+    elements.append(Spacer(1, 8))
+    signatory_rows = plain_field_rows([
+        ('Authorised representative name', '________________________________________'),
+        ('NRC / Passport No.', '________________________________________'),
+        ('Position / capacity', '________________________________________'),
+        ('Specimen signature', '________________________________________'),
+    ], style)
+    elements.append(Table(signatory_rows, colWidths=[190, 285], style=plain_field_table_style()))
+    elements.append(Spacer(1, 10))
+    company_rows = plain_field_rows([
+        ('For and on behalf of', company.name),
+        ('Director / Company Secretary name', '________________________________________'),
+        ('Position', '________________________________________'),
+        ('Signature and company stamp', '________________________________________'),
+        ('Witness / Legal Practitioner / Notary', '________________________________________'),
+        ('Date', timezone.localdate().strftime('%d/%m/%Y')),
+    ], style)
+    elements.append(Table(company_rows, colWidths=[190, 285], style=plain_field_table_style()))
+
+
+def plain_field_rows(rows, style):
+    return [
+        [
+            Paragraph(str(label), style['BodyText']),
+            Paragraph(str(value), style['BodyText']),
+        ]
+        for label, value in rows
+    ]
+
+
+def add_pdf_manufacturer_authorisation_form(elements, bid_pack, style, source_requirement=''):
+    tender = bid_pack.tender
+    company = bid_pack.company
+    references = tender_reference_numbers(tender)
+    form_style = zppa_form_styles(style)
+    bidder = company.name
+    entity = tender.procuring_entity or '[insert complete name of Procuring Entity]'
+    bid_no = references['tender_number']
+    elements.append(Paragraph("Manufacturer's Authorization", form_style['title']))
+    elements.append(Paragraph(
+        '[The Bidder shall require the Manufacturer to fill in this Form in accordance with the instructions indicated. '
+        'This letter of authorization should be on the letterhead of the Manufacturer and should be signed by a person with '
+        'the proper authority to sign documents that are binding on the Manufacturer. The Bidder shall include it in its bid, '
+        'if so indicated in the BDS.]',
+        form_style['italic'],
+    ))
+    elements.append(Spacer(1, 10))
+    for line in [
+        f'Date: {timezone.localdate().strftime("%d/%m/%Y")}',
+        f'OIB No.: {bid_no}',
+        'Alternative No.: Not applicable',
+    ]:
+        elements.append(Paragraph(line, form_style['right']))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph(f'To: {entity}', form_style['body']))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph('WHEREAS', form_style['body']))
+    elements.append(Spacer(1, 6))
+    elements.append(Paragraph(
+        f'We, <i>[insert complete name of Manufacturer]</i>, who are official manufacturers of '
+        f'<i>[insert type of goods manufactured]</i>, having factories at <i>[insert full address of Manufacturer\'s factories]</i>, '
+        f'do hereby authorize {bidder} to submit a bid the purpose of which is to provide the following Goods, '
+        f'manufactured by us <i>[insert name and/or brief description of the Goods]</i>, and to subsequently negotiate and sign the Contract.',
+        form_style['body'],
+    ))
+    elements.append(Paragraph(
+        'We hereby extend our full guarantee and warranty in accordance with Clause 28 of the General Conditions of Contract, '
+        'with respect to the Goods offered by the above firm.',
+        form_style['body'],
+    ))
+    elements.append(Spacer(1, 10))
+    for line in [
+        'Signed: ________________________________________',
+        'Name: __________________________________________',
+        'Title: _________________________________________',
+    ]:
+        elements.append(Paragraph(line, form_style['body']))
+        elements.append(Spacer(1, 4))
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph('Dated on __________ day of ____________________, ________', form_style['body']))
 
 
 def bid_securing_declaration_context(bid_pack):
@@ -931,7 +1149,10 @@ def add_pdf_bid_securing_declaration(elements, bid_pack, style):
     elements.append(Spacer(1, 8))
     elements.append(Paragraph('BID-SECURING DECLARATION', form_style['title']))
     elements.append(Spacer(1, 8))
-    for line in bid_securing_field_lines(context):
+    for line in bid_securing_reference_lines(context):
+        elements.append(Paragraph(line, form_style['right']))
+    elements.append(Spacer(1, 8))
+    for line in bid_securing_recipient_lines(context):
         elements.append(Paragraph(line, form_style['body']))
     elements.append(Spacer(1, 10))
     elements.append(Paragraph('We, the undersigned, declare that:', form_style['body']))
@@ -970,30 +1191,46 @@ def zppa_form_styles(style):
     indented.leftIndent = 22
     indented.firstLineIndent = -14
 
+    italic = body.clone('ZppaFormItalic')
+    italic.fontName = 'Times-Italic'
+    italic.fontSize = 9
+    italic.leading = 11
+    italic.alignment = 4
+
     return {
         'body': body,
         'title': title,
         'right': right,
         'right_small': right_small,
         'indented': indented,
+        'italic': italic,
     }
 
 
 def bid_securing_field_lines(context):
+    return bid_securing_reference_lines(context) + bid_securing_recipient_lines(context)
+
+
+def bid_securing_reference_lines(context):
     return [
         f'Date: {context["date"]}',
         f'Ref No.: {context["ref_no"]}',
         f'Alternative No.: {context["alternative_no"]}',
+    ]
+
+
+def bid_securing_recipient_lines(context):
+    return [
         f'To: {context["procuring_entity"]}',
-        f'Bidder: {context["bidder"]}',
     ]
 
 
 def bid_securing_signature_lines(context):
+    bidder = escape(context["bidder"])
     return [
         f'Signed: ________________________________ In the capacity of {context["capacity"]}',
         f'Name: {context["signatory"]}',
-        f'Duly authorised to sign the bid for and on behalf of: {context["bidder"]}',
+        f'Duly authorised to sign the bid for and on behalf of: <b>{bidder}</b>',
         f'Dated on {context["signing_date"]}',
     ]
 
@@ -1011,6 +1248,18 @@ def is_letter_of_bid_requirement(text):
     ])
 
 
+def is_price_schedule_requirement(text):
+    text = normalize_match_text(text)
+    return any(phrase in text for phrase in [
+        'price schedule',
+        'priced schedule',
+        'financial offer',
+        'bill of quantities',
+        'boq',
+        'commercial offer',
+    ])
+
+
 def add_docx_bid_securing_declaration(document, bid_pack):
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt
@@ -1025,7 +1274,11 @@ def add_docx_bid_securing_declaration(document, bid_pack):
     p = document.add_paragraph('BID-SECURING DECLARATION')
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_docx_paragraph_font(p, size=13, bold=True)
-    for line in bid_securing_field_lines(context):
+    for line in bid_securing_reference_lines(context):
+        p = document.add_paragraph(line)
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        set_docx_paragraph_font(p)
+    for line in bid_securing_recipient_lines(context):
         p = document.add_paragraph(line)
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         set_docx_paragraph_font(p)
@@ -1040,7 +1293,13 @@ def add_docx_bid_securing_declaration(document, bid_pack):
             p.paragraph_format.first_line_indent = Pt(-10)
         set_docx_paragraph_font(p)
     for line in bid_securing_signature_lines(context):
-        p = document.add_paragraph(line)
+        if line.startswith('Duly authorised to sign the bid for and on behalf of:'):
+            p = document.add_paragraph()
+            prefix = 'Duly authorised to sign the bid for and on behalf of: '
+            p.add_run(prefix)
+            p.add_run(context['bidder']).bold = True
+        else:
+            p = document.add_paragraph(line)
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         set_docx_paragraph_font(p)
 
@@ -1051,7 +1310,8 @@ def set_docx_paragraph_font(paragraph, size=12, bold=False):
     for run in paragraph.runs:
         run.font.name = 'Times New Roman'
         run.font.size = Pt(size)
-        run.bold = bold
+        if bold:
+            run.bold = True
 
 
 def price_schedule_rows(bid_pack):
@@ -1747,9 +2007,22 @@ def generate_single_bid_document_pdf(bid_document):
         elements.extend(letterhead_elements(bid_pack.company, ''))
         elements.append(Spacer(1, 8))
         add_pdf_letter_of_bid(elements, bid_pack, style)
+        if is_price_schedule_requirement(lower):
+            elements.append(PageBreak())
+            elements.extend(letterhead_elements(bid_pack.company, ''))
+            elements.append(Spacer(1, 8))
+            add_pdf_price_schedule_form(elements, bid_document, style)
+    elif is_power_of_attorney_requirement(lower):
+        elements.extend(letterhead_elements(bid_pack.company, ''))
+        elements.append(Spacer(1, 8))
+        if can_use_extracted_template_for_bid_document(bid_document, extracted_template):
+            add_pdf_extracted_form_template(elements, bid_document, extracted_template, style)
+        else:
+            add_pdf_power_of_attorney_form(elements, bid_document, style)
     elif form_code:
         if form_code != 'EXP-2.4.1':
-            elements.extend(letterhead_elements(bid_pack.company, QUALIFICATION_FORM_DEFINITIONS[form_code]['title']))
+            letterhead_title = '' if form_code == 'MFR' else QUALIFICATION_FORM_DEFINITIONS[form_code]['title']
+            elements.extend(letterhead_elements(bid_pack.company, letterhead_title))
             elements.append(Spacer(1, 8))
         add_pdf_qualification_form(elements, bid_pack, form_code, style, source_requirement=bid_document.requirement)
     elif is_experience_requirement(lower):
@@ -1809,12 +2082,15 @@ def generated_document_has_own_signature(bid_document):
         'general experience',
         'specific experience',
         'key activit',
+        'manufacturer',
+        'manufacturer authorisation',
+        'manufacturer authorization',
     ])
 
 
 def should_generate_simple_instruction_only(bid_document, lower, extracted_template=None):
     if 'power of attorney' in lower:
-        return not is_power_of_attorney_template(extracted_template)
+        return False
     return any(phrase in lower for phrase in [
         'site visit certificate',
         'site visit certificates',
@@ -1831,6 +2107,10 @@ def is_power_of_attorney_template(template):
         return True
     title = normalize_match_text(f"{template.get('title', '')} {template.get('heading', '')}")
     return 'power of attorney' in title and 'form' in title
+
+
+def is_power_of_attorney_requirement(text):
+    return 'power of attorney' in normalize_match_text(text)
 
 
 def can_use_extracted_template_for_bid_document(bid_document, template):
@@ -1904,10 +2184,11 @@ def add_pdf_bid_document_instruction_page(elements, bid_document, style):
         ['Tender', Paragraph(bid_pack.tender.title, style['BodyText'])],
         ['Bidder', bid_pack.company.name],
         ['Requirement', Paragraph(bid_document.requirement, style['BodyText'])],
-        ['Instruction from XML', Paragraph('<br/>'.join(bid_document.expected_response_lines) or 'Complete / attach as required.', style['BodyText'])],
         ['TenderAI action', Paragraph(action, style['BodyText'])],
         ['Current status', status],
     ]
+    if not is_power_of_attorney_requirement(full_text):
+        rows.insert(5, ['Instruction from XML', Paragraph('<br/>'.join(bid_document.expected_response_lines) or 'Complete / attach as required.', style['BodyText'])])
     if required_type:
         rows.append(['Required certificate type', required_type.label])
     if experience_plan:
@@ -2306,9 +2587,10 @@ def form_document_title(bid_document):
 
 
 def extracted_template_for_bid_document(bid_document, form_code=None):
-    document = bid_document.bid_pack.tender.solicitation_documents.order_by('-uploaded_at').first()
-    analysis = document.analysis_summary if document else {}
-    templates = analysis.get('extracted_form_templates', [])
+    templates = []
+    for document in bid_document.bid_pack.tender.solicitation_documents.order_by('-uploaded_at'):
+        analysis = document.analysis_summary or {}
+        templates.extend(analysis.get('extracted_form_templates', []) or [])
     if not templates:
         return None
     wanted_codes = []
@@ -2319,6 +2601,8 @@ def extracted_template_for_bid_document(bid_document, form_code=None):
         wanted_codes.append('BID_SECURING_DECLARATION')
     if is_letter_of_bid_requirement(lower):
         wanted_codes.append('LETTER_OF_BID')
+    if is_power_of_attorney_requirement(lower):
+        wanted_codes.append('POWER_OF_ATTORNEY')
     for template in templates:
         if template.get('code') in wanted_codes:
             return template
@@ -2678,6 +2962,9 @@ def add_pdf_qualification_form(elements, bid_pack, code, style, source_requireme
     if code == 'EXP-2.4.1':
         add_pdf_general_experience_form(elements, bid_pack, style)
         return
+    if code == 'MFR':
+        add_pdf_manufacturer_authorisation_form(elements, bid_pack, style, source_requirement=source_requirement)
+        return
 
     spec = build_qualification_form_spec(bid_pack, code)
     elements.append(Paragraph(spec['title'].upper(), style['FormTitle']))
@@ -3035,8 +3322,14 @@ def prepared_output_for_bid_document(bid_document):
     if 'bid declaration' in text or 'bid securing' in text or 'bid security' in text:
         return 'Bid-Securing Declaration form'
     if is_letter_of_bid_requirement(text):
+        if is_price_schedule_requirement(text):
+            return 'Letter of Bid plus Price Schedule'
         return 'Letter of Bid / Tender Submission Letter'
+    if is_power_of_attorney_requirement(text):
+        return 'Power of Attorney / Signatory Authorisation form'
     if form_code:
+        if form_code == 'MFR':
+            return "Manufacturer's Authorisation form"
         return f'Qualification form {form_code}'
     if bid_document.matched_company_document:
         return f'Certificate attachment: {bid_document.matched_company_document.get_document_type_display()}'
@@ -3103,4 +3396,60 @@ def form_table_style():
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
+    ])
+
+
+def plain_field_table_style():
+    return TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),
+        ('FONTNAME', (0, 0), (0, -1), 'Times-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('LEADING', (0, 0), (-1, -1), 13),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ])
+
+
+def price_schedule_outer_style():
+    return TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.8, colors.black),
+        ('LINEBEFORE', (1, 0), (1, 0), 0.8, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ])
+
+
+def price_schedule_table_style():
+    return TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.65, colors.black),
+        ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),
+        ('FONTNAME', (0, 1), (-1, 1), 'Times-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('LEADING', (0, 0), (-1, -1), 8),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ])
+
+
+def price_schedule_total_style():
+    return TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.8, colors.black),
+        ('FONTNAME', (0, 0), (-1, -1), 'Times-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ])

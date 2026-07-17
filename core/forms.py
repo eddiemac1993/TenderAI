@@ -1,6 +1,9 @@
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
+from django.contrib.sessions.models import Session
 from django.contrib.auth.forms import UserCreationForm
+from django.utils import timezone
 
 from .models import Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 
@@ -93,3 +96,44 @@ class TeamUserCreateForm(UserCreationForm):
         for field in self.fields.values():
             css_class = 'form-select' if isinstance(field.widget, forms.Select) else 'form-control'
             field.widget.attrs.setdefault('class', css_class)
+
+
+class PublicRegistrationForm(UserCreationForm):
+    email = forms.EmailField(required=True)
+    organization_name = forms.CharField(label='Company / organization name', max_length=180)
+    phone = forms.CharField(required=False, max_length=60)
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ['username', 'email', 'organization_name', 'phone', 'password1', 'password2']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+
+
+class TenderAILoginForm(AuthenticationForm):
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        'already_logged_in': 'This account is already logged in on another device. Ask the admin to mark the user as Pro or log out from the other device first.',
+    }
+
+    def confirm_login_allowed(self, user):
+        super().confirm_login_allowed(user)
+        if user.is_superuser:
+            return
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        if profile.is_pro:
+            return
+        session_key = profile.active_session_key
+        if not session_key:
+            return
+        if Session.objects.filter(session_key=session_key, expire_date__gt=timezone.now()).exists():
+            raise forms.ValidationError(
+                self.error_messages['already_logged_in'],
+                code='already_logged_in',
+            )
+        profile.active_session_key = ''
+        profile.active_session_started_at = None
+        profile.save(update_fields=['active_session_key', 'active_session_started_at'])

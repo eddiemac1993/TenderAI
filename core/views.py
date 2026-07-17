@@ -3,7 +3,9 @@ import sys
 
 from django.contrib import messages
 from django.conf import settings
+from django.contrib.auth import login
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
@@ -14,8 +16,9 @@ from django.views.generic import ListView
 from django.views.generic import TemplateView
 from django.views.generic import UpdateView
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 
-from .forms import OrganizationForm, SupportChatAdminReplyForm, SupportChatQuestionForm, SupportChatStartForm, SystemSettingsForm, TeamUserCreateForm
+from .forms import OrganizationForm, PublicRegistrationForm, SupportChatAdminReplyForm, SupportChatQuestionForm, SupportChatStartForm, SystemSettingsForm, TeamUserCreateForm, TenderAILoginForm
 from .models import Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 from .support_ai import answer_support_question
 from .tenancy import filter_queryset_for_user, user_can_manage_users, user_organization
@@ -36,6 +39,65 @@ class SystemSettingsView(UpdateView):
 
     def get_success_url(self):
         return self.request.path
+
+
+class TenderAILoginView(LoginView):
+    authentication_form = TenderAILoginForm
+    template_name = 'registration/login.html'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        profile = UserProfile.objects.filter(user=self.request.user).first()
+        if profile and not profile.is_pro and not self.request.user.is_superuser:
+            profile.active_session_key = self.request.session.session_key or ''
+            profile.active_session_started_at = timezone.now()
+            profile.save(update_fields=['active_session_key', 'active_session_started_at'])
+        return response
+
+
+class RegisterView(FormView):
+    template_name = 'registration/register.html'
+    form_class = PublicRegistrationForm
+    success_url = reverse_lazy('dashboard')
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect('dashboard')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.email = form.cleaned_data['email']
+        user.save()
+        requested_name = form.cleaned_data['organization_name'].strip()
+        organization_name = requested_name
+        if Organization.objects.filter(name__iexact=requested_name).exists():
+            organization_name = f'{requested_name} ({user.username})'
+        organization = Organization.objects.create(
+            name=organization_name,
+            contact_email=user.email,
+            contact_phone=form.cleaned_data.get('phone', ''),
+        )
+        UserProfile.objects.update_or_create(
+            user=user,
+            defaults={
+                'organization': organization,
+                'role': UserProfile.Role.ORG_ADMIN,
+                'phone': form.cleaned_data.get('phone', ''),
+                'is_pro': False,
+                'full_access_until': None,
+            },
+        )
+        login(self.request, user)
+        profile = user.profile
+        profile.active_session_key = self.request.session.session_key or ''
+        profile.active_session_started_at = timezone.now()
+        profile.save(update_fields=['active_session_key', 'active_session_started_at'])
+        messages.success(
+            self.request,
+            'Account created. You can use the dashboard and ZPPA scraping now. Admin must grant full access for companies, documents, and bid packs.',
+        )
+        return super().form_valid(form)
 
 
 class TeamManagementRequiredMixin(UserPassesTestMixin):

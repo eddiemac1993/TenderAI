@@ -62,10 +62,24 @@ def extract_text_from_c4t_xml(path):
         'Documents Comprising the Bid 11.1 The Bid shall comprise the following:',
     ]
     order = 1
-    for envelope in root.findall('envelope'):
+    current_envelope = None
+    for item in xml_c4t_requirement_items(root):
+        envelope_header = item['envelope']
+        if envelope_header != current_envelope:
+            lines.append(f'Envelope: {envelope_header}')
+            current_envelope = envelope_header
+        suffix = ' mandatory' if item['mandatory'] else ''
+        lines.append(f'({xml_order_letter(order)}) {envelope_header}: {item["title"]}{suffix}')
+        order += 1
+    return '\n'.join(lines)
+
+
+def xml_c4t_requirement_items(root):
+    grouped = []
+    seen = {}
+    for envelope, lot_title in xml_iter_envelopes(root):
         envelope_label = xml_envelope_label(envelope)
-        lines.append(f'Envelope: {envelope_label}')
-        sections = sorted(envelope.findall('section'), key=lambda item: int(item.attrib.get('pos') or 0))
+        sections = sorted(envelope.findall('section'), key=xml_position)
         for section in sections:
             section_label = xml_node_label(section)
             if not section_label:
@@ -78,10 +92,44 @@ def extract_text_from_c4t_xml(path):
             mandatory = any(criterion.attrib.get('mandatory') == '1' for criterion in section.findall('criterion'))
             detail = '; '.join(criteria)
             title = section_label if not detail else f'{section_label} - {detail}'
-            suffix = ' mandatory' if mandatory else ''
-            lines.append(f'({xml_order_letter(order)}) {envelope_label}: {title}{suffix}')
-            order += 1
-    return '\n'.join(lines)
+            key = xml_requirement_key(envelope_label, title, mandatory)
+            if key in seen:
+                existing = grouped[seen[key]]
+                if lot_title and lot_title not in existing['lots']:
+                    existing['lots'].append(lot_title)
+                continue
+            seen[key] = len(grouped)
+            grouped.append({
+                'envelope': envelope_label,
+                'title': title,
+                'mandatory': mandatory,
+                'lots': [lot_title] if lot_title else [],
+            })
+    return grouped
+
+
+def xml_requirement_key(envelope_label, title, mandatory):
+    return (
+        re.sub(r'\s+', ' ', envelope_label.lower()).strip(),
+        re.sub(r'\s+', ' ', title.lower()).strip(),
+        bool(mandatory),
+    )
+
+
+def xml_position(node):
+    try:
+        return int(node.attrib.get('pos') or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def xml_iter_envelopes(root):
+    for envelope in root.findall('envelope'):
+        yield envelope, ''
+    for lot in root.findall('.//lot'):
+        lot_title = xml_node_label(lot) or (lot.findtext('title') or '').strip()
+        for envelope in lot.findall('envelope'):
+            yield envelope, lot_title
 
 
 def xml_node_label(node):
@@ -97,6 +145,7 @@ def xml_envelope_label(envelope):
         'proofDocs': 'Proof documents',
         'technical': 'Technical response',
         'commercial': 'Commercial offer',
+        'financial': 'Financial response',
     }
     return labels.get(envelope_type, envelope_type or envelope.attrib.get('name', 'Envelope'))
 
@@ -127,20 +176,42 @@ def analyze_tender_document(document_text):
 
 
 def extract_cover_references(document_text):
-    cover_text = '\n'.join(document_text.splitlines()[:120])
-    compact_cover = re.sub(r'[ \t]+', ' ', cover_text)
+    reference_text = reference_search_text(document_text)
     return {
-        'tender_number': extract_reference_number(compact_cover, [
+        'tender_number': extract_reference_number(reference_text, [
+            r'\bProcurement\s+Identification\s+Number\s*[:#-]?\s*(?:IFB\s*NO\.?\s*)?(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+            r'\bIdentification\s+Number\s*[:#-]?\s*(?:IFB\s*NO\.?\s*)?(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+            r'\bIFB\s*NO\.?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
             r'\bTender\s*(?:No\.?|Number|Reference(?:\s*No\.?)?|Ref\.?)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
             r'\bProcurement\s*(?:Reference(?:\s*No\.?)?|Ref\.?)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
             r'\bSolicitation\s*(?:No\.?|Number)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
         ]),
-        'invitation_number': extract_reference_number(compact_cover, [
+        'invitation_number': extract_reference_number(reference_text, [
+            r'\bProcurement\s+Identification\s+Number\s*[:#-]?\s*(?:IFB\s*NO\.?\s*)?(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
+            r'\bIFB\s*NO\.?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
             r'\bInvitation\s*(?:for\s*Bids?|to\s*Bid)?\s*(?:No\.?|Number|Reference(?:\s*No\.?)?|Ref\.?)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
             r'\bIFB\s*(?:No\.?|Number)?\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
             r'\bBidding\s*(?:No\.?|Number)\s*[:#-]?\s*(?P<value>[A-Z0-9][A-Z0-9/.\-]+)',
         ]),
     }
+
+
+def reference_search_text(document_text):
+    compact = re.sub(r'[ \t]+', ' ', document_text or '')
+    chunks = []
+    markers = [
+        r'Section\s+II\.?\s+Bidding\s+Data\s+Sheet',
+        r'Bidding\s+Data\s+Sheet\s*\(BDS\)',
+        r'\bITB\s+1\.1\b',
+        r'Procurement\s+Identification\s+Number',
+    ]
+    for marker in markers:
+        for match in re.finditer(marker, compact, re.I):
+            start = max(0, match.start() - 300)
+            end = min(len(compact), match.end() + 1800)
+            chunks.append(compact[start:end])
+    chunks.append('\n'.join(compact.splitlines()[:160]))
+    return '\n'.join(chunks)
 
 
 def extract_reference_number(text, patterns):
@@ -207,7 +278,7 @@ def extract_ordered_bid_items(document_text):
         items = ordered_letter_items(match.group('body'), section)
         if items:
             return items
-    return extract_supplemental_schedule_items(document_text)
+    return []
 
 
 def extract_supplemental_schedule_items(document_text):
@@ -808,8 +879,9 @@ def merge_ordered_bid_items(existing_items, new_items):
 
     def item_key(item):
         return (
-            re.sub(r'\s+', ' ', str(item.get('envelope') or '').strip().lower()),
+            normalize_xml_envelope_for_key(item.get('envelope') or ''),
             re.sub(r'\s+', ' ', str(item.get('requirement') or item.get('title') or '').strip().lower()),
+            re.sub(r'\s+', ' ', str(item.get('response') or '').strip().lower()),
         )
 
     for item in list(existing_items or []) + list(new_items or []):
@@ -819,6 +891,14 @@ def merge_ordered_bid_items(existing_items, new_items):
         seen.add(key)
         merged.append({**item, 'order': len(merged) + 1})
     return merged[:100]
+
+
+def normalize_xml_envelope_for_key(envelope):
+    clean = re.sub(r'\s+', ' ', str(envelope or '').strip().lower())
+    for base in ['proof documents', 'technical response', 'commercial offer', 'financial response']:
+        if clean == base or clean.startswith(f'{base} - '):
+            return base
+    return clean
 
 
 def create_requirements_from_analysis(tender, analysis):

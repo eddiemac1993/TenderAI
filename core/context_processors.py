@@ -6,7 +6,7 @@ from django.utils import timezone
 from companies.models import Company
 from documents.models import CompanyDocument
 from tenders.models import Tender
-from .tenancy import filter_queryset_for_user, user_can_manage_users, user_organization
+from .tenancy import filter_queryset_for_user, user_access_status, user_can_manage_users, user_has_full_access, user_organization
 from .update_service import get_update_status, web_updates_enabled
 
 
@@ -48,9 +48,12 @@ def tenderai_updates(request):
 
 def tenderai_user_context(request):
     organization = user_organization(request.user) if request.user.is_authenticated else None
+    has_full_access = user_has_full_access(request.user) if request.user.is_authenticated else False
     return {
         'tenderai_user': {
             'can_manage_users': user_can_manage_users(request.user) if request.user.is_authenticated else False,
+            'has_full_access': has_full_access,
+            'access_status': user_access_status(request.user) if request.user.is_authenticated else 'Guest',
             'organization': organization,
         }
     }

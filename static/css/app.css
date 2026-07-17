@@ -231,6 +231,17 @@ h6,
   color: #fff;
 }
 
+.sidebar-link-muted {
+  color: rgba(255, 255, 255, 0.48);
+  cursor: default;
+}
+
+.sidebar-link-muted:hover,
+.sidebar-link-muted:focus {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.48);
+}
+
 .app-page {
   display: flex;
   flex: 1;

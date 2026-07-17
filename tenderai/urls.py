@@ -19,7 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from core.views import AppUpdateView, run_app_update
+from core.views import AppUpdateView, RegisterView, TenderAILoginView, run_app_update
 
 from .views import AboutView, DashboardView
 
@@ -27,6 +27,8 @@ urlpatterns = [
     path('', DashboardView.as_view(), name='dashboard'),
     path('about/', AboutView.as_view(), name='about'),
     path('admin/', admin.site.urls),
+    path('accounts/login/', TenderAILoginView.as_view(), name='login'),
+    path('accounts/register/', RegisterView.as_view(), name='register'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('updates/', AppUpdateView.as_view(), name='app_update_direct'),
     path('updates/run/', run_app_update, name='run_app_update_direct'),
