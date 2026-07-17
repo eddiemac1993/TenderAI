@@ -5,13 +5,13 @@
 <div class="auth-shell">
   <section class="auth-hero-panel">
     <div class="auth-brand-mark">T</div>
-    <p class="eyebrow mb-2">Start with public tenders</p>
+    <p class="eyebrow mb-2">Tender preparation assistant</p>
     <h1>Create your TenderAI workspace</h1>
-    <p>Each account gets its own private organization. You can scrape and review ZPPA tenders immediately, then admin unlocks full features when access is granted.</p>
+    <p>Create a private workspace for companies, documents, ZPPA tenders, bid checklists, and tender submission packs.</p>
     <div class="auth-feature-list">
-      <span>Own companies only</span>
-      <span>Own documents only</span>
-      <span>Upgrade to full access</span>
+      <span>Compile bid documents</span>
+      <span>Match company readiness</span>
+      <span>Review before submission</span>
     </div>
   </section>
 
@@ -24,7 +24,8 @@
       {{ form.as_p }}
       <button class="btn btn-primary w-100 auth-submit" type="submit">Create secure workspace</button>
     </form>
-    <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Sign in</a>.</p>
+    <p class="auth-review-note">TenderAI helps make the process easier, but every generated document should be checked by a person before submission.</p>
+    <p class="auth-switch">Already registered? <a class="auth-badge-link" href="{% url 'login' %}">Sign in</a></p>
   </section>
 </div>
 {% endblock %}

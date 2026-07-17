@@ -1108,6 +1108,7 @@ textarea.form-control {
 }
 
 .auth-hero-panel h1 {
+  color: #fff;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 2.35rem;
   font-weight: 800;
@@ -1166,7 +1167,10 @@ textarea.form-control {
 .auth-card input {
   background: #f8fbfb;
   border: 1px solid #cfdad8;
+  border-radius: 12px;
   min-height: 46px;
+  padding-left: 0.95rem;
+  padding-right: 0.95rem;
 }
 
 .auth-card input:focus {
@@ -1185,9 +1189,22 @@ textarea.form-control {
   color: #667085;
 }
 
+.auth-review-note {
+  background: #fff8eb;
+  border: 1px solid #f4d497;
+  border-radius: 12px;
+  color: #745015;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 1rem 0 0;
+  padding: 0.78rem 0.9rem;
+}
+
 .auth-submit {
   background: linear-gradient(135deg, #09604e, #124b7a);
   border: 0;
+  border-radius: 12px;
   box-shadow: 0 14px 28px rgba(9, 96, 78, 0.22);
   font-weight: 900;
   letter-spacing: 0.01em;
@@ -1207,6 +1224,24 @@ textarea.form-control {
   font-size: 0.92rem;
   margin: 1.25rem 0 0;
   text-align: center;
+}
+
+.auth-badge-link {
+  background: rgba(22, 93, 89, 0.1);
+  border: 1px solid rgba(22, 93, 89, 0.22);
+  border-radius: 999px;
+  color: var(--app-primary-dark);
+  display: inline-flex;
+  font-weight: 900;
+  margin-left: 0.25rem;
+  padding: 0.38rem 0.8rem;
+  text-decoration: none;
+}
+
+.auth-badge-link:hover,
+.auth-badge-link:focus {
+  background: var(--app-primary);
+  color: #fff;
 }
 
 .form-actions {
