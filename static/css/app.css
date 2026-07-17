@@ -26,6 +26,32 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body.auth-page {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(217, 154, 38, 0.18), transparent 32%),
+    radial-gradient(circle at 85% 20%, rgba(22, 93, 89, 0.18), transparent 30%),
+    linear-gradient(135deg, #eef5f3, #f7f9fc 52%, #edf3f7);
+}
+
+body.auth-page .app-sidebar,
+body.auth-page .app-topbar,
+body.auth-page .floating-help-chat {
+  display: none;
+}
+
+body.auth-page .app-page {
+  margin-left: 0;
+  min-height: 100vh;
+  width: 100%;
+}
+
+body.auth-page .app-shell {
+  align-items: center;
+  display: flex;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
 h1,
 h2,
 h3,
@@ -1049,9 +1075,10 @@ textarea.form-control {
   display: grid;
   gap: 0;
   grid-template-columns: minmax(280px, 0.95fr) minmax(360px, 1.05fr);
-  margin: 1.5rem auto;
+  margin: auto;
   max-width: 1040px;
   min-height: 620px;
+  width: 100%;
 }
 
 .auth-hero-panel {
@@ -1110,8 +1137,9 @@ textarea.form-control {
 }
 
 .auth-card {
-  background: #fff;
-  border: 1px solid #dbe5e2;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(219, 229, 226, 0.9);
   border-left: 0;
   border-radius: 0 8px 8px 0;
   box-shadow: 0 24px 70px rgba(17, 24, 39, 0.08);
@@ -1119,6 +1147,30 @@ textarea.form-control {
   flex-direction: column;
   justify-content: center;
   padding: 3rem;
+}
+
+.auth-card form {
+  margin-top: 1rem;
+}
+
+.auth-card .errorlist {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 7px;
+  color: #9f1239;
+  font-size: 0.88rem;
+  margin: 0 0 0.85rem;
+  padding: 0.7rem 0.9rem 0.7rem 1.6rem;
+}
+
+.auth-card input {
+  background: #f8fbfb;
+  border: 1px solid #cfdad8;
+  min-height: 46px;
+}
+
+.auth-card input:focus {
+  background: #fff;
 }
 
 .auth-card h2 {
@@ -1138,8 +1190,10 @@ textarea.form-control {
   border: 0;
   box-shadow: 0 14px 28px rgba(9, 96, 78, 0.22);
   font-weight: 900;
-  margin-top: 0.35rem;
-  padding-block: 0.78rem;
+  letter-spacing: 0.01em;
+  margin-top: 0.55rem;
+  min-height: 48px;
+  padding-block: 0.82rem;
 }
 
 .auth-submit:hover,
@@ -1971,6 +2025,11 @@ textarea.form-control {
     grid-template-columns: 1fr;
     margin: 0;
     min-height: 0;
+  }
+
+  body.auth-page .app-shell {
+    align-items: stretch;
+    padding: 1rem;
   }
 
   .auth-hero-panel,

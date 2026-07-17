@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% block title %}Create account - TenderAI{% endblock %}
+{% block body_class %}auth-page{% endblock %}
 {% block content %}
 <div class="auth-shell">
   <section class="auth-hero-panel">
@@ -20,7 +22,7 @@
     <form method="post">
       {% csrf_token %}
       {{ form.as_p }}
-      <button class="btn btn-primary w-100 auth-submit" type="submit">Create account</button>
+      <button class="btn btn-primary w-100 auth-submit" type="submit">Create secure workspace</button>
     </form>
     <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Sign in</a>.</p>
   </section>
