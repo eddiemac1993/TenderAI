@@ -28,6 +28,8 @@
         <div class="sidebar-section">
           <span class="sidebar-section-title">Local Workspace</span>
           <a class="sidebar-link" href="{% url 'dashboard' %}">Dashboard</a>
+          <a class="sidebar-link sidebar-link-primary" href="{% url 'tenders:zppa_scrape_today' %}">Scrape ZPPA</a>
+          <a class="sidebar-link" href="{% url 'tenders:zppa_find_by_url' %}">Find ZPPA URL</a>
           <a class="sidebar-link" href="{% url 'tenders:list' %}">Tenders</a>
           {% if tenderai_user.has_full_access %}
             <a class="sidebar-link" href="{% url 'documents:list' %}">Documents</a>

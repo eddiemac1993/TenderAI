@@ -231,6 +231,12 @@ h6,
   color: #fff;
 }
 
+.sidebar-link-primary {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
 .sidebar-link-muted {
   color: rgba(255, 255, 255, 0.48);
   cursor: default;
@@ -452,6 +458,91 @@ h6,
   flex-wrap: wrap;
   gap: 0.65rem;
   justify-content: flex-end;
+}
+
+.start-here-panel {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--app-line);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow);
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(320px, 1.2fr);
+  padding: 1.15rem;
+}
+
+.start-here-copy h2 {
+  color: #10243f;
+  font-weight: 900;
+}
+
+.start-action-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.start-action-card {
+  background: #f7faf9;
+  border: 1px solid #dbe5e2;
+  border-radius: 8px;
+  color: #10243f;
+  display: grid;
+  gap: 0.3rem;
+  min-height: 128px;
+  padding: 1rem;
+  text-decoration: none;
+}
+
+.start-action-card span {
+  align-items: center;
+  background: #e6f3ef;
+  border-radius: 999px;
+  color: var(--app-primary);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 900;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.start-action-card strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.start-action-card small {
+  color: var(--app-muted);
+  line-height: 1.35;
+}
+
+.start-action-card:hover,
+.start-action-card:focus {
+  border-color: var(--app-primary);
+  box-shadow: 0 14px 32px rgba(16, 36, 63, 0.1);
+  color: #10243f;
+  transform: translateY(-1px);
+}
+
+.start-action-card.primary {
+  background: var(--app-primary);
+  color: #fff;
+}
+
+.start-action-card.primary span {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.start-action-card.primary small {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.start-action-card.locked {
+  background: #f5f6f7;
+  color: #6b7280;
 }
 
 .metric-grid {
@@ -1043,8 +1134,19 @@ textarea.form-control {
 }
 
 .auth-submit {
+  background: linear-gradient(135deg, #09604e, #124b7a);
+  border: 0;
+  box-shadow: 0 14px 28px rgba(9, 96, 78, 0.22);
+  font-weight: 900;
   margin-top: 0.35rem;
   padding-block: 0.78rem;
+}
+
+.auth-submit:hover,
+.auth-submit:focus {
+  background: linear-gradient(135deg, #074f41, #0f3f66);
+  box-shadow: 0 18px 34px rgba(9, 96, 78, 0.28);
+  transform: translateY(-1px);
 }
 
 .auth-switch {
@@ -1858,6 +1960,11 @@ textarea.form-control {
 
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .start-here-panel {
+    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
   .auth-shell {
