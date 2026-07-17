@@ -48,7 +48,10 @@
             <a class="sidebar-link" href="{% url 'core:organizations' %}">Organizations</a>
           {% endif %}
           {% if tenderai_user.has_full_access %}<a class="sidebar-link" href="{% url 'core:support_chat' %}">Team help chat</a>{% endif %}
-          {% if user.is_superuser %}<a class="sidebar-link" href="{% url 'admin:index' %}">Admin</a>{% endif %}
+          {% if user.is_superuser %}
+            <a class="sidebar-link" href="{% url 'admin:core_userprofile_changelist' %}">User Access</a>
+            <a class="sidebar-link" href="{% url 'admin:index' %}">Admin</a>
+          {% endif %}
         </div>
 
         <div class="sidebar-section">
