@@ -1,13 +1,28 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="app-card app-form mx-auto" style="max-width: 460px;">
-  <p class="eyebrow mb-1">Secure access</p>
-  <h1 class="h3 mb-3">Sign in to TenderAI</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn btn-primary w-100" type="submit">Sign in</button>
-  </form>
-  <p class="small text-muted mt-3 mb-0">New to TenderAI? <a href="{% url 'register' %}">Create an account</a>.</p>
+<div class="auth-shell">
+  <section class="auth-hero-panel">
+    <div class="auth-brand-mark">T</div>
+    <p class="eyebrow mb-2">Secure procurement workspace</p>
+    <h1>Welcome back to TenderAI</h1>
+    <p>Sign in to scrape ZPPA opportunities, manage company readiness, and prepare bid documents from your private workspace.</p>
+    <div class="auth-feature-list">
+      <span>Private company data</span>
+      <span>Admin-controlled access</span>
+      <span>Pro multi-device login</span>
+    </div>
+  </section>
+
+  <section class="auth-card app-form">
+    <p class="eyebrow mb-1">Secure access</p>
+    <h2>Sign in</h2>
+    <p class="auth-muted">Use your TenderAI account details to continue.</p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-primary w-100 auth-submit" type="submit">Sign in</button>
+    </form>
+    <p class="auth-switch">New to TenderAI? <a href="{% url 'register' %}">Create an account</a>.</p>
+  </section>
 </div>
 {% endblock %}

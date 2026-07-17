@@ -953,6 +953,106 @@ textarea.form-control {
   min-height: 96px;
 }
 
+.auth-shell {
+  align-items: stretch;
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(360px, 1.05fr);
+  margin: 1.5rem auto;
+  max-width: 1040px;
+  min-height: 620px;
+}
+
+.auth-hero-panel {
+  background:
+    linear-gradient(145deg, rgba(9, 96, 78, 0.94), rgba(12, 38, 45, 0.98)),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.15), transparent 34%);
+  border-radius: 8px 0 0 8px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.auth-brand-mark {
+  align-items: center;
+  background: #fff;
+  border-radius: 8px;
+  color: #09604e;
+  display: inline-flex;
+  font-size: 1.35rem;
+  font-weight: 900;
+  height: 46px;
+  justify-content: center;
+  margin-bottom: 2rem;
+  width: 46px;
+}
+
+.auth-hero-panel h1 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.35rem;
+  font-weight: 800;
+  line-height: 1.08;
+  margin-bottom: 1rem;
+}
+
+.auth-hero-panel p {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1rem;
+  max-width: 430px;
+}
+
+.auth-feature-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 2rem;
+}
+
+.auth-feature-list span {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 800;
+  padding: 0.75rem 0.9rem;
+}
+
+.auth-card {
+  background: #fff;
+  border: 1px solid #dbe5e2;
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.auth-card h2 {
+  color: #10243f;
+  font-size: 1.85rem;
+  font-weight: 900;
+  margin-bottom: 0.4rem;
+}
+
+.auth-muted,
+.auth-switch {
+  color: #667085;
+}
+
+.auth-submit {
+  margin-top: 0.35rem;
+  padding-block: 0.78rem;
+}
+
+.auth-switch {
+  font-size: 0.92rem;
+  margin: 1.25rem 0 0;
+  text-align: center;
+}
+
 .form-actions {
   border-top: 1px solid var(--app-line);
   display: flex;
@@ -1758,6 +1858,26 @@ textarea.form-control {
 
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .auth-shell {
+    grid-template-columns: 1fr;
+    margin: 0;
+    min-height: 0;
+  }
+
+  .auth-hero-panel,
+  .auth-card {
+    border-radius: 8px;
+    padding: 1.35rem;
+  }
+
+  .auth-card {
+    border-left: 1px solid #dbe5e2;
+  }
+
+  .auth-hero-panel h1 {
+    font-size: 1.75rem;
   }
 
   .zppa-detail-grid {
