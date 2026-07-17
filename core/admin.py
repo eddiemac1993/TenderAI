@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
+from .models import MessagePost, MessageThread, Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 
 
 @admin.register(SystemSettings)
@@ -78,4 +78,28 @@ class SupportChatMessageAdmin(admin.ModelAdmin):
     list_display = ('session', 'sender', 'confidence', 'created_at')
     list_filter = ('sender', 'created_at')
     search_fields = ('message', 'session__user_name', 'session__user_email')
+    readonly_fields = ('created_at',)
+
+
+class MessagePostInline(admin.TabularInline):
+    model = MessagePost
+    extra = 0
+    readonly_fields = ('author', 'body', 'created_at')
+    can_delete = False
+
+
+@admin.register(MessageThread)
+class MessageThreadAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'visibility', 'created_by', 'recipient', 'pinned', 'closed', 'updated_at')
+    list_filter = ('visibility', 'pinned', 'closed', 'created_at')
+    search_fields = ('subject', 'posts__body', 'created_by__username', 'recipient__username')
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = [MessagePostInline]
+
+
+@admin.register(MessagePost)
+class MessagePostAdmin(admin.ModelAdmin):
+    list_display = ('thread', 'author', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('body', 'thread__subject', 'author__username')
     readonly_fields = ('created_at',)

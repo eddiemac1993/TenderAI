@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}New Message - TenderAI{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow mb-1">Message board</p>
+    <h1 class="h3 mb-1">New message</h1>
+    <p class="text-muted mb-0">Send feedback privately to admin, post publicly, or create an admin announcement.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'core:message_board' %}">Back to board</a>
+</div>
+
+<form method="post" class="app-card app-form message-form-card">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="row g-3">
+    <div class="col-12">
+      <label class="form-label" for="{{ form.subject.id_for_label }}">{{ form.subject.label }}</label>
+      {{ form.subject }}
+      {{ form.subject.errors }}
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ form.visibility.id_for_label }}">{{ form.visibility.label }}</label>
+      {{ form.visibility }}
+      {{ form.visibility.errors }}
+    </div>
+    {% if form.recipient %}
+      <div class="col-md-6">
+        <label class="form-label" for="{{ form.recipient.id_for_label }}">{{ form.recipient.label }}</label>
+        {{ form.recipient }}
+        {{ form.recipient.errors }}
+      </div>
+    {% endif %}
+    {% if form.pinned %}
+      <div class="col-12">
+        <label class="form-check">
+          {{ form.pinned }}
+          <span class="form-check-label">Pin this message for users</span>
+        </label>
+      </div>
+    {% endif %}
+    <div class="col-12">
+      <label class="form-label" for="{{ form.first_message.id_for_label }}">{{ form.first_message.label }}</label>
+      {{ form.first_message }}
+      {{ form.first_message.errors }}
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Post message</button>
+    <a class="btn btn-outline-secondary" href="{% url 'core:message_board' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

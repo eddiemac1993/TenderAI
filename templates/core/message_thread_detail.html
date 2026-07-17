@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ thread.subject }} - Message Board{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow mb-1">Message board</p>
+    <h1 class="h3 mb-1">{{ thread.subject }}</h1>
+    <p class="text-muted mb-0">
+      {{ thread.get_visibility_display }} · Started by {{ thread.created_by.username }} · {{ thread.created_at|date:"d/m/Y H:i" }}
+      {% if thread.recipient %} · To {{ thread.recipient.username }}{% endif %}
+    </p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'core:message_board' %}">Back to board</a>
+</div>
+
+<div class="message-post-stack">
+  {% for post in thread.posts.all %}
+    <article class="message-post-card {% if post.author.is_superuser %}message-post-admin{% endif %}">
+      <div class="message-post-meta">
+        <strong>{% if post.author.is_superuser %}Admin{% else %}{{ post.author.username }}{% endif %}</strong>
+        <span>{{ post.created_at|date:"d/m/Y H:i" }}</span>
+      </div>
+      <div class="message-post-body">{{ post.body|linebreaksbr }}</div>
+    </article>
+  {% endfor %}
+</div>
+
+{% if thread.closed %}
+  <div class="alert alert-secondary mt-3">This message thread is closed.</div>
+{% else %}
+  <form method="post" action="{% url 'core:message_thread_reply' thread.pk %}" class="app-card app-form mt-3">
+    {% csrf_token %}
+    <label class="form-label" for="{{ reply_form.body.id_for_label }}">{{ reply_form.body.label }}</label>
+    {{ reply_form.body }}
+    {{ reply_form.body.errors }}
+    <button class="btn btn-primary mt-3" type="submit">Send reply</button>
+  </form>
+{% endif %}
+{% endblock %}

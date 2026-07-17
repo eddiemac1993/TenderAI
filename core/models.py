@@ -151,3 +151,46 @@ class SupportChatMessage(models.Model):
 
     def __str__(self):
         return f'{self.get_sender_display()} - {self.created_at:%d/%m/%Y %H:%M}'
+
+
+class MessageThread(models.Model):
+    class Visibility(models.TextChoices):
+        PUBLIC = 'PUBLIC', 'Public to all users'
+        ADMIN_ONLY = 'ADMIN_ONLY', 'Only admin can view'
+        DIRECT = 'DIRECT', 'Direct message'
+
+    subject = models.CharField(max_length=180)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='message_threads')
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_message_threads', null=True, blank=True)
+    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, related_name='message_threads', null=True, blank=True)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.ADMIN_ONLY)
+    pinned = models.BooleanField(default=False)
+    closed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-pinned', '-updated_at']
+
+    def __str__(self):
+        return self.subject
+
+    @property
+    def is_public(self):
+        return self.visibility == self.Visibility.PUBLIC
+
+    def get_absolute_url(self):
+        return reverse('core:message_thread_detail', args=[self.pk])
+
+
+class MessagePost(models.Model):
+    thread = models.ForeignKey(MessageThread, on_delete=models.CASCADE, related_name='posts')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='message_posts')
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.author} - {self.created_at:%d/%m/%Y %H:%M}'

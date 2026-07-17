@@ -2,6 +2,9 @@ from django.urls import path
 
 from .views import (
     AppUpdateView,
+    MessageBoardView,
+    MessageThreadCreateView,
+    MessageThreadDetailView,
     OrganizationCreateView,
     OrganizationListView,
     SupportChatAdminListView,
@@ -13,6 +16,7 @@ from .views import (
     ask_support_chat,
     mark_support_chat_status,
     open_project_folder,
+    reply_message_thread,
     run_app_update,
 )
 
@@ -26,6 +30,10 @@ urlpatterns = [
     path('organizations/', OrganizationListView.as_view(), name='organizations'),
     path('organizations/new/', OrganizationCreateView.as_view(), name='organization_create'),
     path('team/users/new/', TeamUserCreateView.as_view(), name='team_user_create'),
+    path('messages/', MessageBoardView.as_view(), name='message_board'),
+    path('messages/new/', MessageThreadCreateView.as_view(), name='message_thread_create'),
+    path('messages/<int:pk>/', MessageThreadDetailView.as_view(), name='message_thread_detail'),
+    path('messages/<int:pk>/reply/', reply_message_thread, name='message_thread_reply'),
     path('support/', SupportChatStartView.as_view(), name='support_chat'),
     path('support/admin/', SupportChatAdminListView.as_view(), name='support_chat_admin'),
     path('support/<int:pk>/', SupportChatDetailView.as_view(), name='support_chat_detail'),

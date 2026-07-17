@@ -46,8 +46,11 @@
 
         <div class="sidebar-section">
           <span class="sidebar-section-title">Online Team Workspace</span>
-          {% if tenderai_user.can_manage_users and tenderai_user.has_full_access %}
+          {% if tenderai_user.can_manage_users %}
             <a class="sidebar-link" href="{% url 'core:organizations' %}">Organizations</a>
+          {% endif %}
+          {% if user.is_authenticated %}
+            <a class="sidebar-link" href="{% url 'core:message_board' %}">Message Board</a>
           {% endif %}
           {% if tenderai_user.has_full_access %}<a class="sidebar-link" href="{% url 'core:support_chat' %}">Team help chat</a>{% endif %}
           {% if user.is_superuser %}
@@ -64,7 +67,11 @@
           <a class="sidebar-link" href="{% url 'about' %}">About / Help</a>
           <a class="sidebar-link" href="{% url 'core:open_project_folder' %}">Project Folder</a>
           {% if user.is_authenticated %}
-            <span class="sidebar-link sidebar-link-muted">{{ tenderai_user.access_status }}</span>
+            {% if user.is_superuser %}
+              <a class="sidebar-link sidebar-link-primary" href="{% url 'admin:index' %}">Superuser Admin</a>
+            {% else %}
+              <span class="sidebar-link sidebar-link-muted">{{ tenderai_user.access_status }}</span>
+            {% endif %}
             <a class="sidebar-link" href="{% url 'logout' %}">Logout</a>
           {% else %}
             <a class="sidebar-link" href="{% url 'login' %}">Login</a>

@@ -4,7 +4,9 @@ import sys
 from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.db import models
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect
 from django.shortcuts import get_object_or_404
@@ -18,8 +20,8 @@ from django.views.generic import UpdateView
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 
-from .forms import OrganizationForm, PublicRegistrationForm, SupportChatAdminReplyForm, SupportChatQuestionForm, SupportChatStartForm, SystemSettingsForm, TeamUserCreateForm, TenderAILoginForm
-from .models import Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
+from .forms import MessageReplyForm, MessageThreadForm, OrganizationForm, PublicRegistrationForm, SupportChatAdminReplyForm, SupportChatQuestionForm, SupportChatStartForm, SystemSettingsForm, TeamUserCreateForm, TenderAILoginForm
+from .models import MessagePost, MessageThread, Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 from .support_ai import answer_support_question
 from .tenancy import filter_queryset_for_user, user_can_manage_users, user_organization
 from .update_service import get_update_status, run_safe_update
@@ -310,3 +312,96 @@ def create_support_exchange(session, question):
     if confidence < 50 and session.status == SupportChatSession.Status.OPEN:
         session.status = SupportChatSession.Status.NEEDS_ADMIN
     session.save(update_fields=['status', 'updated_at'])
+
+
+def message_thread_queryset_for_user(user):
+    queryset = MessageThread.objects.select_related('created_by', 'recipient', 'organization').prefetch_related('posts')
+    if user.is_superuser:
+        return queryset
+    organization = user_organization(user)
+    return queryset.filter(
+        models.Q(visibility=MessageThread.Visibility.PUBLIC)
+        | models.Q(created_by=user)
+        | models.Q(recipient=user)
+        | models.Q(organization=organization, visibility=MessageThread.Visibility.PUBLIC)
+    ).distinct()
+
+
+class MessageBoardView(LoginRequiredMixin, ListView):
+    model = MessageThread
+    template_name = 'core/message_board.html'
+    context_object_name = 'threads'
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = message_thread_queryset_for_user(self.request.user)
+        visibility = self.request.GET.get('visibility', '').strip()
+        q = self.request.GET.get('q', '').strip()
+        if visibility:
+            queryset = queryset.filter(visibility=visibility)
+        if q:
+            queryset = queryset.filter(models.Q(subject__icontains=q) | models.Q(posts__body__icontains=q)).distinct()
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['visibility_options'] = MessageThread.Visibility.choices
+        context['selected_visibility'] = self.request.GET.get('visibility', '').strip()
+        context['query'] = self.request.GET.get('q', '').strip()
+        return context
+
+
+class MessageThreadCreateView(LoginRequiredMixin, FormView):
+    template_name = 'core/message_thread_form.html'
+    form_class = MessageThreadForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        thread = form.save(commit=False)
+        thread.created_by = self.request.user
+        thread.organization = user_organization(self.request.user)
+        if not self.request.user.is_superuser:
+            thread.recipient = None
+            thread.pinned = False
+        thread.save()
+        MessagePost.objects.create(
+            thread=thread,
+            author=self.request.user,
+            body=form.cleaned_data['first_message'],
+        )
+        messages.success(self.request, 'Message posted.')
+        return redirect(thread)
+
+
+class MessageThreadDetailView(LoginRequiredMixin, DetailView):
+    model = MessageThread
+    template_name = 'core/message_thread_detail.html'
+    context_object_name = 'thread'
+
+    def get_queryset(self):
+        return message_thread_queryset_for_user(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['reply_form'] = MessageReplyForm()
+        return context
+
+
+@require_POST
+def reply_message_thread(request, pk):
+    thread = get_object_or_404(message_thread_queryset_for_user(request.user), pk=pk)
+    if thread.closed:
+        messages.warning(request, 'This message thread is closed.')
+        return redirect(thread)
+    form = MessageReplyForm(request.POST)
+    if form.is_valid():
+        MessagePost.objects.create(thread=thread, author=request.user, body=form.cleaned_data['body'])
+        thread.save(update_fields=['updated_at'])
+        messages.success(request, 'Reply posted.')
+    else:
+        messages.error(request, 'Please type a reply.')
+    return redirect(thread)

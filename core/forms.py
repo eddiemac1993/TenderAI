@@ -5,7 +5,7 @@ from django.contrib.sessions.models import Session
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
-from .models import Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
+from .models import MessagePost, MessageThread, Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 
 
 class SystemSettingsForm(forms.ModelForm):
@@ -137,3 +137,56 @@ class TenderAILoginForm(AuthenticationForm):
         profile.active_session_key = ''
         profile.active_session_started_at = None
         profile.save(update_fields=['active_session_key', 'active_session_started_at'])
+
+
+class MessageThreadForm(forms.ModelForm):
+    first_message = forms.CharField(
+        label='Message',
+        widget=forms.Textarea(attrs={'rows': 5, 'placeholder': 'Type your feedback, issue, request, or announcement...'}),
+    )
+
+    class Meta:
+        model = MessageThread
+        fields = ['subject', 'visibility', 'recipient', 'pinned', 'first_message']
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.fields['recipient'].queryset = User.objects.filter(is_active=True).order_by('username')
+        self.fields['recipient'].required = False
+        if not (user and user.is_superuser):
+            self.fields['visibility'].choices = [
+                (MessageThread.Visibility.ADMIN_ONLY, 'Send privately to admin'),
+                (MessageThread.Visibility.PUBLIC, 'Post publicly to all users'),
+            ]
+            self.fields.pop('recipient')
+            self.fields.pop('pinned')
+        for name, field in self.fields.items():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.setdefault('class', 'form-check-input')
+            elif isinstance(field.widget, forms.Select):
+                field.widget.attrs.setdefault('class', 'form-select')
+            else:
+                field.widget.attrs.setdefault('class', 'form-control')
+
+    def clean(self):
+        cleaned = super().clean()
+        visibility = cleaned.get('visibility')
+        recipient = cleaned.get('recipient')
+        if visibility == MessageThread.Visibility.DIRECT and not recipient:
+            self.add_error('recipient', 'Choose a user for a direct message.')
+        return cleaned
+
+
+class MessageReplyForm(forms.ModelForm):
+    class Meta:
+        model = MessagePost
+        fields = ['body']
+        widgets = {
+            'body': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Write a reply...'}),
+        }
+        labels = {'body': 'Reply'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['body'].widget.attrs.setdefault('class', 'form-control')
