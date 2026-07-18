@@ -87,12 +87,30 @@ def add_signature(elements, label='Prepared by'):
 
 def apply_company_letterhead_pdf(pdf_bytes, company, skip_first_page=True):
     """Lay generated PDF content over the company's first letterhead PDF page."""
-    if not company or not getattr(company, 'letterhead_pdf', None):
+    if not company:
         return pdf_bytes
-    if not company.letterhead_pdf:
-        return pdf_bytes
+
+    letterhead_file = None
     try:
-        with company.letterhead_pdf.open('rb') as letterhead_handle:
+        from documents.models import CompanyDocument
+
+        letterhead_document = (
+            company.documents.filter(document_type=CompanyDocument.DocumentType.COMPANY_LETTERHEAD)
+            .order_by('-uploaded_at')
+            .first()
+        )
+        if letterhead_document and letterhead_document.file.name.lower().endswith('.pdf'):
+            letterhead_file = letterhead_document.file
+    except Exception:
+        letterhead_file = None
+
+    if not letterhead_file and getattr(company, 'letterhead_pdf', None):
+        letterhead_file = company.letterhead_pdf
+    if not letterhead_file:
+        return pdf_bytes
+
+    try:
+        with letterhead_file.open('rb') as letterhead_handle:
             letterhead_reader = PdfReader(letterhead_handle)
             if not letterhead_reader.pages:
                 return pdf_bytes

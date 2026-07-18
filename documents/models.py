@@ -28,6 +28,7 @@ class CompanyDocument(models.Model):
         WARRANTY_UNDERTAKING = 'WARRANTY_UNDERTAKING', 'Warranty / Undertaking Letter'
         PAST_CONTRACT = 'PAST_CONTRACT', 'Past Contract'
         COMPANY_PROFILE = 'COMPANY_PROFILE', 'Company Profile'
+        COMPANY_LETTERHEAD = 'COMPANY_LETTERHEAD', 'Company Letterhead'
         OTHER = 'OTHER', 'Other'
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='documents')

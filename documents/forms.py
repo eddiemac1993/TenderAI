@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
 from .models import CompanyDocument
 
@@ -36,3 +37,14 @@ class CompanyDocumentForm(forms.ModelForm):
         if document_type:
             return CompanyDocument.DocumentType(document_type).label
         return 'Company Document'
+
+    def clean_file(self):
+        uploaded_file = self.cleaned_data.get('file')
+        document_type = self.cleaned_data.get('document_type')
+        if (
+            uploaded_file
+            and document_type == CompanyDocument.DocumentType.COMPANY_LETTERHEAD
+            and not uploaded_file.name.lower().endswith('.pdf')
+        ):
+            raise ValidationError('Company letterhead must be uploaded as a PDF file.')
+        return uploaded_file
