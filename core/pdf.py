@@ -1,10 +1,12 @@
 from io import BytesIO
+from copy import copy
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from pypdf import PdfReader, PdfWriter
 
 from .models import SystemSettings
 
@@ -81,3 +83,30 @@ def add_signature(elements, label='Prepared by'):
         except Exception:
             pass
     elements.append(Paragraph('Signature: ________________________', style['BodyText']))
+
+
+def apply_company_letterhead_pdf(pdf_bytes, company, skip_first_page=True):
+    """Lay generated PDF content over the company's first letterhead PDF page."""
+    if not company or not getattr(company, 'letterhead_pdf', None):
+        return pdf_bytes
+    if not company.letterhead_pdf:
+        return pdf_bytes
+    try:
+        with company.letterhead_pdf.open('rb') as letterhead_handle:
+            letterhead_reader = PdfReader(letterhead_handle)
+            if not letterhead_reader.pages:
+                return pdf_bytes
+            generated_reader = PdfReader(BytesIO(pdf_bytes))
+            writer = PdfWriter()
+            for index, page in enumerate(generated_reader.pages):
+                if skip_first_page and index == 0:
+                    writer.add_page(page)
+                    continue
+                background = copy(letterhead_reader.pages[0])
+                background.merge_page(page)
+                writer.add_page(background)
+            output = BytesIO()
+            writer.write(output)
+            return output.getvalue()
+    except Exception:
+        return pdf_bytes

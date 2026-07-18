@@ -16,11 +16,14 @@ class BootstrapFormMixin:
 class CompanyForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Company
-        fields = ['organization', 'name', 'tpin', 'registration_number', 'address', 'phone', 'email', 'website', 'profile_summary', 'business_categories']
+        fields = ['organization', 'name', 'tpin', 'registration_number', 'address', 'phone', 'email', 'website', 'profile_summary', 'letterhead_pdf', 'business_categories']
         widgets = {
             'address': forms.Textarea(attrs={'rows': 3}),
             'profile_summary': forms.Textarea(attrs={'rows': 4}),
             'business_categories': forms.CheckboxSelectMultiple,
+        }
+        help_texts = {
+            'letterhead_pdf': 'Upload a one-page PDF letterhead. TenderAI will place generated bid document text over it.',
         }
 
     def __init__(self, *args, user=None, **kwargs):

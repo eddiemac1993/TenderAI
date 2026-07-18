@@ -11,7 +11,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.platypus import PageBreak, Paragraph, Spacer, Table, TableStyle
 
 from core.models import SystemSettings
-from core.pdf import add_signature, build_pdf_response, letterhead_elements, styles
+from core.pdf import add_signature, apply_company_letterhead_pdf, build_pdf_response, letterhead_elements, styles
 from documents.models import CompanyDocument
 from tenders.services import bid_pack_output_for_task, required_document_types
 from .models import BidDocument
@@ -2061,6 +2061,7 @@ def generate_single_bid_document_pdf(bid_document):
     if not bid_document.matched_company_document and not generated_document_has_own_signature(bid_document):
         add_signature(elements, label='Authorised signatory')
     pdf = build_pdf_response(elements, bid_document.requirement)
+    pdf = apply_company_letterhead_pdf(pdf, bid_pack.company, skip_first_page=True)
     return append_matched_certificate_pdf(pdf, bid_document)
 
 

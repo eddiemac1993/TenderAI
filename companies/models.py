@@ -23,6 +23,7 @@ class Company(models.Model):
     email = models.EmailField(blank=True)
     website = models.URLField(blank=True)
     profile_summary = models.TextField(blank=True)
+    letterhead_pdf = models.FileField(upload_to='company_letterheads/%Y/%m/', blank=True)
     business_categories = models.ManyToManyField(BusinessCategory, blank=True, related_name='companies')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

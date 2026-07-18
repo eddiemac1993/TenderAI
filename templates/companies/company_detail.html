@@ -30,6 +30,14 @@
         <dt>Phone</dt><dd>{{ object.phone|default:"-" }}</dd>
         <dt>Email</dt><dd>{{ object.email|default:"-" }}</dd>
         <dt>Address</dt><dd>{{ object.address|default:"-"|linebreaksbr }}</dd>
+        <dt>Letterhead PDF</dt>
+        <dd>
+          {% if object.letterhead_pdf %}
+            <a href="{{ object.letterhead_pdf.url }}" target="_blank" rel="noopener">View uploaded letterhead</a>
+          {% else %}
+            <span class="text-muted">Not uploaded. Edit profile to add one.</span>
+          {% endif %}
+        </dd>
       </dl>
       <h3 class="h6">Profile summary</h3>
       <p class="mb-0">{{ object.profile_summary|default:"No company profile summary yet."|linebreaksbr }}</p>
