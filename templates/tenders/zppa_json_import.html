@@ -6,10 +6,10 @@
   <h2 class="h5">Recommended workflow</h2>
   <ol class="mb-3">
     <li>On your computer, run the public ZPPA export command.</li>
-    <li>Upload the generated <strong>zppa_today.json</strong> file here.</li>
-    <li>Open the tender list and use the Open Bidding National or Simplified Bidding filters.</li>
+    <li>Upload the generated <strong>zppa_open.json</strong> file here.</li>
+    <li>Open the tender list and use the entity, open period, or search filters.</li>
   </ol>
-  <code>python manage.py export_zppa_public_tenders zppa_today.json --today --limit 50</code>
+  <code>python manage.py export_zppa_public_tenders zppa_open.json --limit 200</code>
 </div>
 <form method="post" enctype="multipart/form-data" class="app-card app-form">
   {% csrf_token %}

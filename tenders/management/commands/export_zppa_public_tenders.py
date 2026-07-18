@@ -11,12 +11,17 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('output_path')
         parser.add_argument('--today', action='store_true', help='Only export tenders listed today.')
-        parser.add_argument('--limit', type=int, default=10, help='Maximum visible tenders to export.')
+        parser.add_argument('--limit', type=int, default=200, help='Maximum open/not-yet-closed visible tenders to export.')
+        parser.add_argument('--include-closed', action='store_true', help='Also export tenders whose ZPPA closing deadline has already passed.')
 
     def handle(self, *args, **options):
         scraper = PublicZppaTenderScraper()
         try:
-            items = scraper.scrape(today_only=options['today'], limit=options['limit'])
+            items = scraper.scrape(
+                today_only=options['today'],
+                limit=options['limit'],
+                include_closed=options['include_closed'],
+            )
         except Exception as exc:
             raise CommandError(f'Public ZPPA export failed: {exc}') from exc
         payload = [

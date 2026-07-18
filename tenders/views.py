@@ -67,6 +67,12 @@ class TenderListView(ListView):
             queryset = queryset.filter(published_at__date=today)
         elif period == 'published_7':
             queryset = queryset.filter(published_at__date__gte=today - timedelta(days=7))
+        elif period == 'open':
+            queryset = queryset.filter(
+                Q(closing_at__gte=now)
+                | Q(closing_date__gte=today)
+                | (Q(closing_at__isnull=True) & Q(closing_date__isnull=True))
+            )
         elif period == 'closing_today':
             queryset = queryset.filter(Q(closing_at__date=today) | Q(closing_date=today))
         elif period == 'closing_7':
@@ -99,6 +105,7 @@ class TenderListView(ListView):
         )
         context['period_options'] = [
             ('', 'All periods'),
+            ('open', 'Open / not yet closed'),
             ('published_today', 'Published today'),
             ('published_7', 'Published last 7 days'),
             ('closing_today', 'Closing today'),
@@ -360,7 +367,7 @@ def analyze_tender_placeholder(request, pk):
 
 def scrape_zppa_today(request):
     try:
-        imported = import_public_zppa_tenders(today_only=False, limit=50, write_log=True)
+        imported = import_public_zppa_tenders(today_only=False, limit=200, write_log=True)
     except Exception as exc:
         messages.error(request, zppa_scrape_error_message(exc))
         return HttpResponseRedirect(reverse('tenders:zppa_scrape_logs'))
@@ -368,9 +375,9 @@ def scrape_zppa_today(request):
     updated_count = len(imported) - created_count
     messages.success(
         request,
-        f'Public ZPPA scrape finished: {created_count} created, {updated_count} updated from current public listings.',
+        f'Public ZPPA scrape finished: {created_count} created, {updated_count} updated from open/not-yet-closed public listings.',
     )
-    return HttpResponseRedirect(reverse('tenders:list'))
+    return HttpResponseRedirect(f'{reverse("tenders:list")}?period=open')
 
 
 def zppa_scrape_error_message(exc):

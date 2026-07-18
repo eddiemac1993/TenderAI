@@ -98,12 +98,13 @@ class PublicZppaTenderScraper:
         with urlopen(request, timeout=self.timeout) as response:
             return response.read().decode('utf-8', errors='replace'), response.geturl()
 
-    def scrape(self, today_only=False, limit=10):
+    def scrape(self, today_only=False, limit=100, include_closed=False):
         html, final_url = self.fetch_html()
         parser = LinkTextParser()
         parser.feed(html)
         tenders = []
         today = timezone.localdate()
+        now = timezone.now()
         for href, text in parser.links:
             scraped = self.parse_link(text, urljoin(final_url, href))
             if not scraped:
@@ -111,10 +112,17 @@ class PublicZppaTenderScraper:
             if today_only and scraped.listed_date != today:
                 continue
             scraped = self.enrich_from_detail_page(scraped)
+            if not include_closed and self.is_closed(scraped, now):
+                continue
             tenders.append(scraped)
             if len(tenders) >= limit:
                 break
         return tenders
+
+    def is_closed(self, tender, now=None):
+        if not tender.closing_at:
+            return False
+        return tender.closing_at < (now or timezone.now())
 
     def parse_link(self, text, url):
         match = self.DATE_RE.match(text)
@@ -248,12 +256,12 @@ class PublicZppaTenderScraper:
             return None
 
 
-def import_public_zppa_tenders(today_only=False, limit=10, write_log=False):
+def import_public_zppa_tenders(today_only=False, limit=100, write_log=False, include_closed=False):
     log = ZppaScrapeLog.objects.create(today_only=today_only, limit=limit) if write_log else None
     scraper = PublicZppaTenderScraper()
     imported = []
     try:
-        for item in scraper.scrape(today_only=today_only, limit=limit):
+        for item in scraper.scrape(today_only=today_only, limit=limit, include_closed=include_closed):
             tender = find_existing_tender(item)
             created = tender is None
             if created:
@@ -290,7 +298,7 @@ def import_public_zppa_tenders(today_only=False, limit=10, write_log=False):
         log.finished_at = timezone.now()
         log.created_count = sum(1 for _, created in imported if created)
         log.updated_count = len(imported) - log.created_count
-        log.message = 'Public ZPPA scrape completed. No login-only pages accessed.'
+        log.message = 'Public ZPPA scrape completed for open/not-yet-closed public listings. No login-only pages accessed.'
         log.save()
     return imported
 
