@@ -18,10 +18,10 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'organization', 'role', 'access_status', 'is_pro', 'access_days', 'access_expires_at', 'phone', 'created_at')
+    list_display = ('user', 'organization', 'role', 'access_status', 'is_pro', 'access_days', 'access_expires_at', 'terms_accepted_at', 'phone', 'created_at')
     list_filter = ('organization', 'role', 'is_pro', 'access_days', 'full_access_until')
     search_fields = ('user__username', 'user__email', 'organization__name')
-    readonly_fields = ('access_granted_at', 'active_session_key', 'active_session_started_at', 'created_at')
+    readonly_fields = ('access_granted_at', 'active_session_key', 'active_session_started_at', 'terms_accepted_at', 'created_at')
     actions = ('grant_7_days', 'grant_30_days', 'revoke_full_access')
     fieldsets = (
         ('User and organization', {
@@ -32,7 +32,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             'description': 'Enter access_days for paid access duration, or mark is_pro to allow full access and multiple devices. full_access_until is optional for a fixed expiry date.',
         }),
         ('Audit', {
-            'fields': ('created_at',),
+            'fields': ('terms_accepted_at', 'created_at'),
         }),
     )
 

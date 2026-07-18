@@ -21,7 +21,24 @@
     <p class="auth-muted">New users begin with dashboard and ZPPA scraping access.</p>
     <form method="post">
       {% csrf_token %}
-      {{ form.as_p }}
+      {% for field in form %}
+        {% if field.name == 'accept_terms' %}
+          <div class="form-check auth-terms-check">
+            {{ field }}
+            <label class="form-check-label" for="{{ field.id_for_label }}">
+              I accept the <a href="{% url 'terms' %}" target="_blank" rel="noopener">TenderAI terms and conditions</a> and understand generated documents must be reviewed before submission.
+            </label>
+            {{ field.errors }}
+          </div>
+        {% else %}
+          <p>
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+            {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+          </p>
+        {% endif %}
+      {% endfor %}
       <button class="btn btn-primary w-100 auth-submit" type="submit">Create secure workspace</button>
     </form>
     <p class="auth-review-note">TenderAI helps make the process easier, but every generated document should be checked by a person before submission.</p>

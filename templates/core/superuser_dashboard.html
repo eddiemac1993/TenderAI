@@ -59,6 +59,7 @@
               {% if profile.user.is_superuser %}<span class="status-chip status-chip-warning ms-1">Superuser</span>{% endif %}
               {% if profile.user.email %}<div class="small text-muted">{{ profile.user.email }}</div>{% endif %}
               <div class="small text-muted">{{ profile.get_role_display }}</div>
+              <div class="small text-muted">Terms: {{ profile.terms_accepted_at|date:"d/m/Y H:i"|default:"Not accepted" }}</div>
             </td>
             <td>
               {{ profile.organization|default:"-" }}

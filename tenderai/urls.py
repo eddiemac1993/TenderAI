@@ -21,11 +21,14 @@ from django.urls import include, path
 
 from core.views import AppUpdateView, RegisterView, TenderAILoginView, run_app_update, tenderai_logout
 
-from .views import AboutView, DashboardView
+from .views import AboutView, DashboardView, ServiceWorkerView, TermsView, WebManifestView
 
 urlpatterns = [
     path('', DashboardView.as_view(), name='dashboard'),
     path('about/', AboutView.as_view(), name='about'),
+    path('terms/', TermsView.as_view(), name='terms'),
+    path('manifest.webmanifest', WebManifestView.as_view(), name='webmanifest'),
+    path('serviceworker.js', ServiceWorkerView.as_view(), name='serviceworker'),
     path('admin/', admin.site.urls),
     path('accounts/login/', TenderAILoginView.as_view(), name='login'),
     path('accounts/logout/', tenderai_logout, name='logout'),

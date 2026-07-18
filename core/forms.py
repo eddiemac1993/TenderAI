@@ -102,15 +102,19 @@ class PublicRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
     organization_name = forms.CharField(label='Company / organization name', max_length=180)
     phone = forms.CharField(required=False, max_length=60)
+    accept_terms = forms.BooleanField(
+        required=True,
+        label='I accept the TenderAI terms and understand that all generated tender documents must be reviewed before submission.',
+    )
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ['username', 'email', 'organization_name', 'phone', 'password1', 'password2']
+        fields = ['username', 'email', 'organization_name', 'phone', 'password1', 'password2', 'accept_terms']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs.setdefault('class', 'form-control')
+        for name, field in self.fields.items():
+            field.widget.attrs.setdefault('class', 'form-check-input' if name == 'accept_terms' else 'form-control')
 
 
 class TenderAILoginForm(AuthenticationForm):

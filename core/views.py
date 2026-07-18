@@ -95,6 +95,7 @@ class RegisterView(FormView):
                 'phone': form.cleaned_data.get('phone', ''),
                 'is_pro': False,
                 'full_access_until': None,
+                'terms_accepted_at': timezone.now(),
             },
         )
         login(self.request, user)

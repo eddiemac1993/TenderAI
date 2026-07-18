@@ -38,6 +38,7 @@ class UserProfile(models.Model):
     full_access_until = models.DateTimeField(null=True, blank=True, help_text='Leave blank for limited access unless the user is Pro.')
     active_session_key = models.CharField(max_length=80, blank=True)
     active_session_started_at = models.DateTimeField(null=True, blank=True)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

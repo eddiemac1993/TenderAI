@@ -4,6 +4,10 @@ from django.db import models
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.views.generic import TemplateView
+from django.views.generic import View
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from django.conf import settings
 
 from companies.models import Company
 from core.tenancy import filter_queryset_for_user
@@ -46,3 +50,19 @@ class DashboardView(TemplateView):
 
 class AboutView(TemplateView):
     template_name = 'about.html'
+
+
+class TermsView(TemplateView):
+    template_name = 'terms.html'
+
+
+class ServiceWorkerView(View):
+    def get(self, request, *args, **kwargs):
+        content = render_to_string('serviceworker.js', request=request)
+        return HttpResponse(content, content_type='application/javascript')
+
+
+class WebManifestView(View):
+    def get(self, request, *args, **kwargs):
+        manifest_path = settings.BASE_DIR / 'static' / 'site.webmanifest'
+        return HttpResponse(manifest_path.read_text(encoding='utf-8'), content_type='application/manifest+json')

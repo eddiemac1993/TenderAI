@@ -36,6 +36,9 @@ class LoginRequiredMiddleware:
             reverse('login'),
             reverse('register'),
             reverse('logout'),
+            reverse('terms'),
+            reverse('webmanifest'),
+            reverse('serviceworker'),
             '/admin/login/',
         ]
         return any(path.startswith(prefix) for prefix in public_prefixes if prefix)

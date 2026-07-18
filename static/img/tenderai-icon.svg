@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TenderAI">
+  <rect width="512" height="512" rx="92" fill="#165d59"/>
+  <path d="M110 128h292v256H110z" fill="#ffffff" opacity=".96"/>
+  <path d="M146 172h220v22H146zm0 58h220v22H146zm0 58h146v22H146z" fill="#165d59"/>
+  <circle cx="354" cy="342" r="54" fill="#d99a26"/>
+  <path d="M330 342l16 16 34-42" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M110 128h292v58H110z" fill="#102f3f" opacity=".18"/>
+</svg>
