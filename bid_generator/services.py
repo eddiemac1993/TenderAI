@@ -2000,20 +2000,20 @@ def generate_single_bid_document_pdf(bid_document):
     elements.append(PageBreak())
 
     if 'bid declaration' in lower or 'bid securing' in lower or 'bid security' in lower:
-        elements.extend(letterhead_elements(bid_pack.company, ''))
+        elements.extend(letterhead_elements(bid_pack.company, '', use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_bid_securing_declaration(elements, bid_pack, style)
     elif is_letter_of_bid_requirement(lower):
-        elements.extend(letterhead_elements(bid_pack.company, ''))
+        elements.extend(letterhead_elements(bid_pack.company, '', use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_letter_of_bid(elements, bid_pack, style)
         if is_price_schedule_requirement(lower):
             elements.append(PageBreak())
-            elements.extend(letterhead_elements(bid_pack.company, ''))
+            elements.extend(letterhead_elements(bid_pack.company, '', use_pdf_letterhead=True))
             elements.append(Spacer(1, 8))
             add_pdf_price_schedule_form(elements, bid_document, style)
     elif is_power_of_attorney_requirement(lower):
-        elements.extend(letterhead_elements(bid_pack.company, ''))
+        elements.extend(letterhead_elements(bid_pack.company, '', use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         if can_use_extracted_template_for_bid_document(bid_document, extracted_template):
             add_pdf_extracted_form_template(elements, bid_document, extracted_template, style)
@@ -2022,22 +2022,22 @@ def generate_single_bid_document_pdf(bid_document):
     elif form_code:
         if form_code != 'EXP-2.4.1':
             letterhead_title = '' if form_code == 'MFR' else QUALIFICATION_FORM_DEFINITIONS[form_code]['title']
-            elements.extend(letterhead_elements(bid_pack.company, letterhead_title))
+            elements.extend(letterhead_elements(bid_pack.company, letterhead_title, use_pdf_letterhead=True))
             elements.append(Spacer(1, 8))
         add_pdf_qualification_form(elements, bid_pack, form_code, style, source_requirement=bid_document.requirement)
     elif is_experience_requirement(lower):
-        elements.extend(letterhead_elements(bid_pack.company, 'Experience Evidence Schedule'))
+        elements.extend(letterhead_elements(bid_pack.company, 'Experience Evidence Schedule', use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_experience_evidence_form(elements, bid_document, style)
     elif required_type or looks_like_attachment_request(lower):
         elements.pop()
         return build_pdf_response(elements, bid_document.requirement)
     elif 'warranty' in lower or 'delivery period' in lower or 'delivery' in lower:
-        elements.extend(letterhead_elements(bid_pack.company, 'Delivery / Warranty Undertaking'))
+        elements.extend(letterhead_elements(bid_pack.company, 'Delivery / Warranty Undertaking', use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_delivery_warranty_form(elements, bid_document, style)
     elif 'technical' in lower or 'specification' in lower or 'qualification and experience' in lower or 'general experience' in lower:
-        elements.extend(letterhead_elements(bid_pack.company, 'Technical Response Schedule'))
+        elements.extend(letterhead_elements(bid_pack.company, 'Technical Response Schedule', use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_technical_response_form(elements, bid_document, style)
     elif bid_document.matched_company_document:
@@ -2046,15 +2046,15 @@ def generate_single_bid_document_pdf(bid_document):
     elif required_type:
         add_pdf_missing_certificate_notice(elements, bid_document, style)
     elif looks_like_table_requirement(lower):
-        elements.extend(letterhead_elements(bid_pack.company, 'Required Schedule / Table'))
+        elements.extend(letterhead_elements(bid_pack.company, 'Required Schedule / Table', use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_required_table_response(elements, bid_document, style)
     elif can_use_extracted_template_for_bid_document(bid_document, extracted_template):
-        elements.extend(letterhead_elements(bid_pack.company, form_document_title(bid_document)))
+        elements.extend(letterhead_elements(bid_pack.company, form_document_title(bid_document), use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_extracted_form_template(elements, bid_document, extracted_template, style)
     else:
-        elements.extend(letterhead_elements(bid_pack.company, form_document_title(bid_document)))
+        elements.extend(letterhead_elements(bid_pack.company, form_document_title(bid_document), use_pdf_letterhead=True))
         elements.append(Spacer(1, 8))
         add_pdf_placeholder_form(elements, bid_document, 'Tender Requirement Response', style)
 
@@ -2124,7 +2124,7 @@ def can_use_extracted_template_for_bid_document(bid_document, template):
 def add_pdf_simple_instruction_only_document(elements, bid_document, style):
     bid_pack = bid_document.bid_pack
     title, actions = simple_instruction_details(bid_document)
-    elements.extend(letterhead_elements(bid_pack.company, ''))
+    elements.extend(letterhead_elements(bid_pack.company, '', use_pdf_letterhead=True))
     elements.append(Spacer(1, 10))
     elements.append(Paragraph(title, style['FormTitle']))
     elements.append(Spacer(1, 8))

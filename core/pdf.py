@@ -48,10 +48,37 @@ def styles():
     return base
 
 
-def letterhead_elements(company, document_title):
+def company_letterhead_pdf_file(company):
+    if not company:
+        return None
+    try:
+        from documents.models import CompanyDocument
+
+        letterhead_document = (
+            company.documents.filter(document_type=CompanyDocument.DocumentType.COMPANY_LETTERHEAD)
+            .order_by('-uploaded_at')
+            .first()
+        )
+        if letterhead_document and letterhead_document.file.name.lower().endswith('.pdf'):
+            return letterhead_document.file
+    except Exception:
+        pass
+
+    if getattr(company, 'letterhead_pdf', None):
+        return company.letterhead_pdf
+    return None
+
+
+def letterhead_elements(company, document_title, use_pdf_letterhead=False):
     settings = SystemSettings.load()
     style = styles()
     elements = []
+    if use_pdf_letterhead and company_letterhead_pdf_file(company):
+        elements.append(Spacer(1, 32 * mm))
+        if document_title:
+            elements.append(Paragraph(f'<b>{document_title}</b>', style['Heading1']))
+        return elements
+
     if settings.letterhead:
         try:
             elements.append(Image(settings.letterhead.path, width=170 * mm, height=28 * mm, kind='proportional'))
@@ -87,25 +114,7 @@ def add_signature(elements, label='Prepared by'):
 
 def apply_company_letterhead_pdf(pdf_bytes, company, skip_first_page=True):
     """Lay generated PDF content over the company's first letterhead PDF page."""
-    if not company:
-        return pdf_bytes
-
-    letterhead_file = None
-    try:
-        from documents.models import CompanyDocument
-
-        letterhead_document = (
-            company.documents.filter(document_type=CompanyDocument.DocumentType.COMPANY_LETTERHEAD)
-            .order_by('-uploaded_at')
-            .first()
-        )
-        if letterhead_document and letterhead_document.file.name.lower().endswith('.pdf'):
-            letterhead_file = letterhead_document.file
-    except Exception:
-        letterhead_file = None
-
-    if not letterhead_file and getattr(company, 'letterhead_pdf', None):
-        letterhead_file = company.letterhead_pdf
+    letterhead_file = company_letterhead_pdf_file(company)
     if not letterhead_file:
         return pdf_bytes
 
