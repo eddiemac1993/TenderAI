@@ -328,6 +328,21 @@ h6,
   display: none !important;
 }
 
+.topbar-message-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.topbar-message-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.topbar-message-label {
+  font-weight: 800;
+}
+
 .floating-help-chat {
   align-items: center;
   background: var(--app-primary);
@@ -2272,6 +2287,11 @@ textarea.form-control {
   .topbar-actions .dropdown,
   .topbar-actions .dropdown > button {
     width: 100%;
+  }
+
+  .topbar-message-button {
+    justify-content: center;
+    min-height: 42px;
   }
 
   .topbar-title {
