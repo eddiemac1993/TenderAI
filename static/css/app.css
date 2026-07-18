@@ -310,6 +310,14 @@ h6,
   margin-top: 0.15rem;
 }
 
+.topbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .floating-help-chat {
   align-items: center;
   background: var(--app-primary);
@@ -359,6 +367,7 @@ h6,
 .page-heading {
   align-items: center;
   display: flex;
+  gap: 0.8rem;
   justify-content: space-between;
   margin-bottom: 1rem;
 }
@@ -2139,7 +2148,59 @@ textarea.form-control {
   margin-bottom: 0.35rem;
 }
 
+@media (max-width: 991px) {
+  .app-layout {
+    display: block;
+  }
+
+  .app-page {
+    min-height: 100vh;
+  }
+
+  .app-topbar {
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .app-shell {
+    padding: 1rem 1rem 5rem;
+  }
+
+  .metric-grid,
+  .instruction-grid,
+  .document-card-grid,
+  .company-card-grid,
+  .match-card-grid,
+  .bidpack-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tender-result-card,
+  .bid-task-card,
+  .message-thread-card,
+  .mini-tender-card {
+    gap: 1rem;
+  }
+
+  .table-responsive {
+    border: 1px solid var(--app-line);
+    border-radius: 8px;
+  }
+
+  .app-table {
+    min-width: 760px;
+  }
+}
+
 @media (max-width: 767px) {
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
   .app-layout {
     display: block;
   }
@@ -2155,8 +2216,37 @@ textarea.form-control {
     position: static;
   }
 
+  .app-topbar > .d-flex:first-child {
+    align-items: flex-start !important;
+  }
+
+  .topbar-actions {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .topbar-actions > .btn {
+    min-height: 42px;
+  }
+
+  .topbar-actions .dropdown,
+  .topbar-actions .dropdown > button {
+    width: 100%;
+  }
+
+  .topbar-title {
+    font-size: 1rem;
+  }
+
+  .topbar-subtitle {
+    font-size: 0.76rem;
+  }
+
   .app-shell {
-    padding: 1rem;
+    padding: 0.85rem 0.85rem 5rem;
   }
 
   .page-heading,
@@ -2165,8 +2255,7 @@ textarea.form-control {
   .section-heading,
   .tender-result-card,
   .tender-workspace-header,
-  .bid-task-card,
-  .message-thread-card {
+  .bid-task-card {
     align-items: stretch;
     flex-direction: column;
   }
@@ -2195,12 +2284,35 @@ textarea.form-control {
 
   .hero-actions,
   .tender-result-actions,
-  .bid-task-actions {
+  .bid-task-actions,
+  .form-actions {
     justify-content: flex-start;
   }
 
+  .page-heading > .d-flex,
+  .section-heading > .d-flex,
+  .hero-actions,
+  .tender-result-actions,
+  .bid-task-actions,
+  .form-actions {
+    width: 100%;
+  }
+
+  .page-heading .btn,
+  .hero-actions .btn,
+  .tender-result-actions .btn,
+  .bid-task-actions .btn,
+  .form-actions .btn {
+    min-height: 42px;
+  }
+
   .metric-grid {
+    gap: 0.65rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-card {
+    padding: 0.85rem;
   }
 
   .start-here-panel {
@@ -2248,6 +2360,54 @@ textarea.form-control {
   .company-card-grid,
   .instruction-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-hero,
+  .about-hero,
+  .start-here-panel,
+  .section-panel,
+  .app-card,
+  .tender-result-card,
+  .document-card,
+  .message-thread-card,
+  .message-post-card {
+    border-radius: 8px;
+  }
+
+  .dashboard-hero {
+    gap: 1rem;
+    padding: 1.15rem;
+  }
+
+  .display-title {
+    font-size: 2rem;
+  }
+
+  .section-panel,
+  .app-card {
+    padding: 1rem;
+  }
+
+  .filter-panel {
+    padding: 1rem;
+  }
+
+  .filter-panel .btn {
+    min-height: 42px;
+  }
+
+  .table-responsive {
+    margin-left: -0.15rem;
+    margin-right: -0.15rem;
+    width: calc(100% + 0.3rem);
+  }
+
+  .app-table th,
+  .app-table td,
+  .table th,
+  .table td {
+    font-size: 0.88rem;
+    white-space: normal;
   }
 
   .evidence-gap-grid {
@@ -2315,5 +2475,28 @@ textarea.form-control {
   .zppa-detail-grid dd {
     border-top: 0;
     padding-top: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .page-heading .btn,
+  .hero-actions .btn,
+  .tender-result-actions .btn,
+  .bid-task-actions .btn,
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .floating-help-chat {
+    bottom: 0.75rem;
+    right: 0.75rem;
   }
 }
