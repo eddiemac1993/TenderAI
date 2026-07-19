@@ -1,0 +1,14 @@
+Welcome to TenderAI, {{ user.username }}.
+
+Your TenderAI workspace has been created for {{ organization.name }}.
+
+TenderAI helps you find public tender opportunities, manage company documents, review bid requirements, and prepare draft bid documents faster.
+
+You can start here:
+{{ dashboard_url }}
+
+Important reminder:
+TenderAI is an assistant. It can make mistakes, so every generated document, certificate attachment, price schedule, and form must be reviewed by a person before submission.
+
+Regards,
+TenderAI

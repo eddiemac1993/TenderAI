@@ -21,6 +21,7 @@ from django.views.generic import UpdateView
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 
+from .emails import send_welcome_email
 from .forms import MessageReplyForm, MessageThreadForm, OrganizationForm, PublicRegistrationForm, SupportChatAdminReplyForm, SupportChatQuestionForm, SupportChatStartForm, SystemSettingsForm, TeamUserCreateForm, TenderAILoginForm, UserAccessUpdateForm
 from .models import MessagePost, MessageThread, Organization, SupportChatMessage, SupportChatSession, SystemSettings, UserProfile
 from .support_ai import answer_support_question
@@ -103,10 +104,13 @@ class RegisterView(FormView):
         profile.active_session_key = self.request.session.session_key or ''
         profile.active_session_started_at = timezone.now()
         profile.save(update_fields=['active_session_key', 'active_session_started_at'])
+        email_sent = send_welcome_email(user, organization, request=self.request)
         messages.success(
             self.request,
             'Account created. You can use the dashboard and ZPPA scraping now. Admin must grant full access for companies, documents, and bid packs.',
         )
+        if user.email and not email_sent:
+            messages.info(self.request, 'Welcome email could not be sent yet. Ask the admin to check email settings.')
         return super().form_valid(form)
 
 
