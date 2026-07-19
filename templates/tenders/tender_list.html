@@ -18,12 +18,12 @@
   <div class="row g-3 align-items-end">
     <div class="col-lg-4">
       <label class="form-label" for="id_entity">Procuring entity</label>
-      <input class="form-control" id="id_entity" type="search" name="entity" value="{{ selected_entity }}" list="entity-suggestions" placeholder="Start typing an entity name">
-      <datalist id="entity-suggestions">
+      <select class="form-select" id="id_entity" name="entity">
+        <option value="">All procuring entities</option>
         {% for entity in entity_options %}
-          <option value="{{ entity }}"></option>
+          <option value="{{ entity }}" {% if selected_entity == entity %}selected{% endif %}>{{ entity }}</option>
         {% endfor %}
-      </datalist>
+      </select>
     </div>
     <div class="col-lg-3">
       <label class="form-label" for="id_period">Period</label>

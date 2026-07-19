@@ -432,6 +432,10 @@ h6,
   line-height: 1;
 }
 
+.topbar-action-label {
+  font-weight: 800;
+}
+
 .floating-help-chat {
   align-items: center;
   background: var(--app-primary);
@@ -2346,6 +2350,10 @@ textarea.form-control {
     display: block;
   }
 
+  .app-page {
+    padding-top: 154px;
+  }
+
   .app-sidebar-inner {
     min-height: auto;
   }
@@ -2353,19 +2361,24 @@ textarea.form-control {
   .app-topbar {
     align-items: stretch;
     flex-direction: column;
-    padding: 0.75rem 1rem;
-    position: sticky;
+    left: 0;
+    min-height: 0;
+    padding: 0.65rem 1rem 0.7rem;
+    position: fixed;
+    right: 0;
     top: 0;
+    z-index: 1040;
   }
 
   .app-topbar > .d-flex:first-child {
-    align-items: flex-start !important;
+    align-items: center !important;
   }
 
   .topbar-actions {
     align-items: stretch;
     display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
     justify-content: stretch;
     width: 100%;
   }
@@ -2379,7 +2392,7 @@ textarea.form-control {
   }
 
   .topbar-actions > .btn {
-    min-height: 42px;
+    min-height: 38px;
   }
 
   .topbar-actions .dropdown,
@@ -2389,7 +2402,23 @@ textarea.form-control {
 
   .topbar-message-button {
     justify-content: center;
-    min-height: 42px;
+    min-height: 38px;
+  }
+
+  .topbar-icon-button,
+  .topbar-actions .nav-alert-button {
+    border-radius: 8px;
+    min-width: 0;
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+
+  .topbar-action-label {
+    display: none;
+  }
+
+  .topbar-icon-glyph {
+    font-size: 1.08rem;
   }
 
   .topbar-title {
