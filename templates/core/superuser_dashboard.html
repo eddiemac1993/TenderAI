@@ -38,7 +38,7 @@
       <p class="eyebrow mb-1">Subscriptions and login status</p>
       <h2 class="h5 mb-0">Users</h2>
     </div>
-    <span class="text-muted small">Pro users can login on more than one device.</span>
+    <span class="text-muted small">Set access days or an until date. Pro controls multi-device login.</span>
   </div>
   <div class="table-responsive">
     <table class="table app-table align-middle">
@@ -67,6 +67,9 @@
             </td>
             <td>
               <div><strong>{{ profile.access_status }}</strong></div>
+              {% if profile.access_expires_at %}
+                <div class="small text-muted">Expires: {{ profile.access_expires_at|date:"d/m/Y H:i" }} · {{ profile.subscription_time_left_label }}</div>
+              {% endif %}
               <div class="small text-muted">Last login: {{ profile.user.last_login|date:"d/m/Y H:i"|default:"Never" }}</div>
               <div class="small text-muted">
                 Session:
@@ -94,12 +97,13 @@
                     {{ profile.access_form.role }}
                   </div>
                   <div class="superuser-date-field">
-                    <label class="form-label small" for="{{ profile.access_form.full_access_until.id_for_label }}">Until</label>
+                    <label class="form-label small" for="{{ profile.access_form.full_access_until.id_for_label }}">Until date</label>
                     {{ profile.access_form.full_access_until }}
+                    <div class="form-text small">Calendar date access ends.</div>
                   </div>
                   <label class="form-check superuser-pro-check">
                     {{ profile.access_form.is_pro }}
-                    <span class="form-check-label">Pro</span>
+                    <span class="form-check-label">Pro multi-device</span>
                   </label>
                   <button class="btn btn-sm btn-primary" type="submit">Save</button>
                 </div>

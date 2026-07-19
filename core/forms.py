@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
@@ -197,22 +199,25 @@ class MessageReplyForm(forms.ModelForm):
 
 
 class UserAccessUpdateForm(forms.ModelForm):
+    full_access_until = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label='Full access until date',
+        help_text='Optional. Choose the calendar date when access should end.',
+    )
+
     class Meta:
         model = UserProfile
         fields = ['access_days', 'is_pro', 'full_access_until', 'role']
-        widgets = {
-            'full_access_until': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
         labels = {
             'access_days': 'Access days',
             'is_pro': 'Pro',
-            'full_access_until': 'Full access until',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.full_access_until:
-            self.fields['full_access_until'].initial = timezone.localtime(self.instance.full_access_until).strftime('%Y-%m-%dT%H:%M')
+            self.fields['full_access_until'].initial = timezone.localtime(self.instance.full_access_until).date()
         for name, field in self.fields.items():
             if isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs.setdefault('class', 'form-check-input')
@@ -220,3 +225,10 @@ class UserAccessUpdateForm(forms.ModelForm):
                 field.widget.attrs.setdefault('class', 'form-select form-select-sm')
             else:
                 field.widget.attrs.setdefault('class', 'form-control form-control-sm')
+
+    def clean_full_access_until(self):
+        selected_date = self.cleaned_data.get('full_access_until')
+        if not selected_date:
+            return None
+        expiry = datetime.combine(selected_date, time.max)
+        return timezone.make_aware(expiry, timezone.get_current_timezone())

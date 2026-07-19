@@ -74,10 +74,39 @@ class UserProfile(models.Model):
         if self.user.is_superuser:
             return 'Superuser'
         if self.is_pro:
-            return 'Pro'
+            if self.access_expires_at:
+                return f'Pro - {self.subscription_time_left_label}'
+            return 'Pro - unlimited access'
         if self.has_full_access:
-            return f'Full access until {timezone.localtime(self.access_expires_at):%d/%m/%Y %H:%M}'
+            return f'Full access - {self.subscription_time_left_label}'
         return 'Limited access'
+
+    @property
+    def subscription_days_left(self):
+        expiry = self.access_expires_at
+        if not expiry:
+            return None
+        seconds_left = (expiry - timezone.now()).total_seconds()
+        if seconds_left < 0:
+            return 0
+        return int(seconds_left // 86400) + (1 if seconds_left % 86400 else 0)
+
+    @property
+    def subscription_time_left_label(self):
+        days_left = self.subscription_days_left
+        if days_left is None:
+            return 'no expiry date set'
+        if days_left <= 0:
+            return 'expired'
+        if days_left == 1:
+            return '1 day left'
+        return f'{days_left} days left'
+
+    @property
+    def plan_label(self):
+        if self.user.is_superuser:
+            return 'Superuser'
+        return 'Pro' if self.is_pro else 'Standard'
 
     def save(self, *args, **kwargs):
         if self.access_days and not self.access_granted_at:

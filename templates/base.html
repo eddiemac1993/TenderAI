@@ -80,7 +80,15 @@
             {% if user.is_superuser %}
               <a class="sidebar-link" href="{% url 'core:superuser_dashboard' %}">User subscriptions</a>
             {% else %}
-              <span class="sidebar-link sidebar-link-muted">{{ tenderai_user.access_status }}</span>
+              <span class="sidebar-subscription-card">
+                <span class="sidebar-subscription-plan">{{ tenderai_user.plan_label }}</span>
+                <strong>{{ tenderai_user.subscription_label }}</strong>
+                {% if tenderai_user.days_left is not None %}
+                  <small>Subscription: {{ tenderai_user.days_left }} day{{ tenderai_user.days_left|pluralize }} left</small>
+                {% else %}
+                  <small>Ask admin to set subscription days.</small>
+                {% endif %}
+              </span>
             {% endif %}
             <a class="sidebar-link" href="{% url 'logout' %}">Logout</a>
           {% else %}

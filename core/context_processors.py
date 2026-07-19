@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 
@@ -49,11 +50,20 @@ def tenderai_updates(request):
 def tenderai_user_context(request):
     organization = user_organization(request.user) if request.user.is_authenticated else None
     has_full_access = user_has_full_access(request.user) if request.user.is_authenticated else False
+    profile = None
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.profile
+        except ObjectDoesNotExist:
+            profile = None
     return {
         'tenderai_user': {
             'can_manage_users': user_can_manage_users(request.user) if request.user.is_authenticated else False,
             'has_full_access': has_full_access,
             'access_status': user_access_status(request.user) if request.user.is_authenticated else 'Guest',
+            'plan_label': profile.plan_label if profile else 'Guest',
+            'subscription_label': profile.access_status if profile else 'Guest',
+            'days_left': profile.subscription_days_left if profile else None,
             'organization': organization,
         }
     }
