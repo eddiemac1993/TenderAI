@@ -5,16 +5,59 @@
   <div>
     <p class="eyebrow mb-1">How to use TenderAI</p>
     <h1 class="h3 mb-2">TenderAI workflow guide</h1>
-    <p class="mb-0">TenderAI helps you find public ZPPA tenders, check which company is ready to bid, manage certificates, analyze solicitation documents, and generate bid packs.</p>
+    <p class="mb-0">TenderAI helps you find public ZPPA tenders, check which company is ready to bid, manage certificates, analyze solicitation documents, and generate bid packs for human review.</p>
   </div>
   <a class="btn btn-light" href="{% url 'dashboard' %}">Go to dashboard</a>
 </section>
+
+<section class="start-here-panel mb-4">
+  <div class="start-here-copy">
+    <p class="eyebrow mb-1">Start here</p>
+    <h2 class="h4 mb-2">Choose what you want to do next</h2>
+    <p class="text-muted mb-0">TenderAI works best when users follow a simple path: find tenders, add company data, upload documents, then generate bid files.</p>
+  </div>
+  <div class="start-action-grid">
+    <a class="start-action-card primary" href="{% url 'tenders:zppa_scrape_today' %}">
+      <span>1</span>
+      <strong>Scrape ZPPA</strong>
+      <small>Fetch current public tender opportunities.</small>
+    </a>
+    <a class="start-action-card" href="{% url 'tenders:list' %}">
+      <span>2</span>
+      <strong>Review tenders</strong>
+      <small>Open a tender and check closing time.</small>
+    </a>
+    <a class="start-action-card" href="{% url 'companies:list' %}">
+      <span>3</span>
+      <strong>Add companies</strong>
+      <small>Keep each company profile ready.</small>
+    </a>
+    <a class="start-action-card" href="{% url 'documents:list' %}">
+      <span>4</span>
+      <strong>Upload documents</strong>
+      <small>Add certificates and expiry dates.</small>
+    </a>
+  </div>
+</section>
+
+<div class="workspace-mode-grid mb-4">
+  <div class="workspace-mode-card workspace-mode-local">
+    <span class="document-type">Local Workspace</span>
+    <h2 class="h5 mb-2">Bid preparation on this computer</h2>
+    <p class="mb-0">Use this side for ZPPA scraping, XML analysis, company documents, certificates, profiles, and generated bid packs.</p>
+  </div>
+  <div class="workspace-mode-card workspace-mode-online">
+    <span class="document-type">Online Team Workspace</span>
+    <h2 class="h5 mb-2">Team login and progress online</h2>
+    <p class="mb-0">Use this side for organizations, users, team progress, help chat, admin review, and hosted collaboration.</p>
+  </div>
+</div>
 
 <div class="instruction-grid mb-4">
   <div class="instruction-card">
     <span>1</span>
     <h2>Scrape ZPPA tenders</h2>
-    <p>Open the Dashboard or Tenders page and click <strong>Scrape ZPPA</strong>. TenderAI imports current public ZPPA tender listings and puts the latest ones first.</p>
+    <p>Open the Dashboard or Tenders page and click <strong>Scrape ZPPA</strong>. TenderAI imports current public ZPPA tender listings and puts the latest tenders first.</p>
     <a href="{% url 'tenders:list' %}">Open tenders</a>
   </div>
   <div class="instruction-card">
@@ -44,7 +87,7 @@
   <div class="instruction-card">
     <span>6</span>
     <h2>Upload solicitation document</h2>
-    <p>On a tender page, open the <strong>TenderAI</strong> tab and upload the PDF/DOCX solicitation document. TenderAI extracts text and creates requirement signals.</p>
+    <p>On a tender page, upload the PDF, DOCX, XML, or text solicitation file. TenderAI extracts requirements, dates, ITB signals, required forms, and document evidence.</p>
     <a href="{% url 'tenders:list' %}">Open tender page</a>
   </div>
   <div class="instruction-card">
@@ -56,7 +99,7 @@
   <div class="instruction-card">
     <span>8</span>
     <h2>Create and download bid pack</h2>
-    <p>From Company Match, click <strong>Create bid pack</strong>, review readiness, then generate DOCX/PDF. The pack includes checklist, profile, forms, and certificate attachments.</p>
+    <p>From the tender detail page, click <strong>Generate bid documents</strong>, choose the company, review readiness, then download individual PDFs or a combined pack.</p>
     <a href="{% url 'bid_generator:list' %}">Open bid packs</a>
   </div>
 </div>
@@ -69,7 +112,7 @@
         <li>Start TenderAI from the desktop shortcut.</li>
         <li>Click <strong>Scrape ZPPA</strong>.</li>
         <li>Review alerts for closing tenders and expiring documents.</li>
-        <li>Open promising tenders and run company matching.</li>
+        <li>Open promising tenders and check the XML evidence checklist.</li>
         <li>Fix missing documents before generating a bid pack.</li>
       </ol>
     </div>
@@ -80,8 +123,9 @@
       <ul class="instruction-list">
         <li>TenderAI only scrapes public ZPPA tender pages.</li>
         <li>It does not bypass logins or protected pages.</li>
-        <li>Rule-based AI analysis should be checked against the original solicitation document.</li>
+        <li>Rule-based AI/XML analysis should be checked against the original solicitation document.</li>
         <li>Always confirm deadlines, bid security, site visits, and mandatory forms before submission.</li>
+        <li>TenderAI helps compile documents, but the bidder remains responsible for final review and submission.</li>
       </ul>
     </div>
   </div>

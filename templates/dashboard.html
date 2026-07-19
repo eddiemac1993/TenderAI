@@ -21,56 +21,14 @@
   </div>
 {% endif %}
 
-<section class="start-here-panel mb-4">
-  <div class="start-here-copy">
-    <p class="eyebrow mb-1">Start here</p>
-    <h2 class="h4 mb-2">Choose what you want to do next</h2>
-    <p class="text-muted mb-0">TenderAI works best when users follow a simple path: find tenders, add company data, upload documents, then generate bid files.</p>
+<section class="section-panel mb-4 dashboard-guide-strip">
+  <div>
+    <p class="eyebrow mb-1">Need guidance?</p>
+    <h2 class="h5 mb-1">Open the TenderAI instruction page</h2>
+    <p class="text-muted mb-0">The full guide explains the simple workflow: scrape ZPPA, review tenders, add companies, upload documents, and generate bid files.</p>
   </div>
-  <div class="start-action-grid">
-    <a class="start-action-card primary" href="{% url 'tenders:zppa_scrape_today' %}">
-      <span>1</span>
-      <strong>Scrape ZPPA</strong>
-      <small>Fetch current public tender opportunities.</small>
-    </a>
-    <a class="start-action-card" href="{% url 'tenders:list' %}">
-      <span>2</span>
-      <strong>Review tenders</strong>
-      <small>Open a tender and check closing time.</small>
-    </a>
-    {% if tenderai_user.has_full_access %}
-      <a class="start-action-card" href="{% url 'companies:list' %}">
-        <span>3</span>
-        <strong>Add companies</strong>
-        <small>Keep each company profile ready.</small>
-      </a>
-      <a class="start-action-card" href="{% url 'documents:list' %}">
-        <span>4</span>
-        <strong>Upload documents</strong>
-        <small>Add certificates and expiry dates.</small>
-      </a>
-    {% else %}
-      <span class="start-action-card locked">
-        <span>3</span>
-        <strong>Full features locked</strong>
-        <small>Admin must grant access days or Pro.</small>
-      </span>
-    {% endif %}
-  </div>
+  <a class="btn btn-outline-primary" href="{% url 'about' %}">About / Help</a>
 </section>
-
-<div class="workspace-mode-grid mb-4">
-  <div class="workspace-mode-card workspace-mode-local">
-    <span class="document-type">Local Workspace</span>
-    <h2 class="h5 mb-2">Bid preparation on this computer</h2>
-    <p class="mb-0">Use this side for ZPPA scraping, XML analysis, company documents, certificates, profiles, and generated bid packs.</p>
-  </div>
-  <div class="workspace-mode-card workspace-mode-online">
-    <span class="document-type">Online Team Workspace</span>
-    <h2 class="h5 mb-2">Team login and progress online</h2>
-    <p class="mb-0">Use this side for organizations, users, team progress, help chat, admin review, and hosted collaboration.</p>
-  </div>
-</div>
 
 <div class="metric-grid mb-4">
   {% if tenderai_user.has_full_access %}

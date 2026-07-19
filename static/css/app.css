@@ -614,6 +614,13 @@ h6,
   justify-content: flex-end;
 }
 
+.dashboard-guide-strip {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
 .start-here-panel {
   align-items: center;
   background: #fff;
@@ -2436,6 +2443,7 @@ textarea.form-control {
   .page-heading,
   .form-actions,
   .dashboard-hero,
+  .dashboard-guide-strip,
   .section-heading,
   .tender-result-card,
   .tender-workspace-header,
