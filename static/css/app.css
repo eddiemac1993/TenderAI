@@ -159,10 +159,12 @@ h6,
 
 .nav-alert-button {
   align-items: center;
-  background: transparent;
-  border: 0;
+  background: #fff;
+  border: 1px solid rgba(102, 112, 133, 0.28);
   display: flex;
   gap: 0.4rem;
+  justify-content: center;
+  min-height: 34px;
 }
 
 .nav-alert-badge {
@@ -418,6 +420,16 @@ h6,
 .topbar-message-button {
   color: var(--app-ink);
   text-decoration: none;
+}
+
+.topbar-icon-button {
+  justify-content: center;
+  min-width: 54px;
+}
+
+.topbar-icon-glyph {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .floating-help-chat {
@@ -2342,7 +2354,8 @@ textarea.form-control {
     align-items: stretch;
     flex-direction: column;
     padding: 0.75rem 1rem;
-    position: static;
+    position: sticky;
+    top: 0;
   }
 
   .app-topbar > .d-flex:first-child {
@@ -2352,9 +2365,17 @@ textarea.form-control {
   .topbar-actions {
     align-items: stretch;
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr 1fr;
     justify-content: stretch;
     width: 100%;
+  }
+
+  .topbar-actions .install-app-button:not([hidden]) {
+    grid-column: 1 / -1;
+  }
+
+  .topbar-actions > a.btn-primary {
+    grid-column: 1 / -1;
   }
 
   .topbar-actions > .btn {
@@ -2618,7 +2639,7 @@ textarea.form-control {
   }
 
   .topbar-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   .page-heading .btn,

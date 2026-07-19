@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'quotations',
     'ai_engine',
     'bid_generator',
-    'council_opportunities',
 ]
 
 MIDDLEWARE = [
@@ -78,6 +77,7 @@ TEMPLATES = [
                 'core.context_processors.tenderai_alerts',
                 'core.context_processors.tenderai_updates',
                 'core.context_processors.tenderai_user_context',
+                'core.context_processors.tenderai_messages',
             ],
         },
     },

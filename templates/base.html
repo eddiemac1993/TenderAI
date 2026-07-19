@@ -46,7 +46,6 @@
             <a class="sidebar-link" href="{% url 'companies:list' %}">Companies</a>
             <a class="sidebar-link" href="{% url 'bid_generator:list' %}">Generated bids</a>
             <a class="sidebar-link" href="{% url 'companies:list' %}">Generate profiles</a>
-            <a class="sidebar-link" href="{% url 'council_opportunities:list' %}">Council Opportunities</a>
           {% else %}
             <span class="sidebar-link sidebar-link-muted">Documents locked</span>
             <span class="sidebar-link sidebar-link-muted">Companies locked</span>
@@ -119,9 +118,9 @@
         <button class="btn btn-sm btn-outline-primary install-app-button" type="button" data-install-app-button hidden>Install app</button>
         <a class="btn btn-sm btn-primary" href="{% url 'tenders:zppa_find_by_url' %}">Find ZPPA URL</a>
         {% if user.is_authenticated %}
-          <a class="btn btn-sm btn-outline-secondary nav-alert-button topbar-message-button" href="{% url 'core:message_board' %}" aria-label="Open Message Board">
-            Messages
-            <span class="nav-alert-badge" aria-hidden="true">Msg</span>
+          <a class="btn btn-sm btn-outline-secondary nav-alert-button topbar-icon-button topbar-message-button" href="{% url 'core:message_board' %}" aria-label="Open Message Board">
+            <span class="topbar-icon-glyph" aria-hidden="true">&#9993;</span>
+            <span class="nav-alert-badge">{{ tenderai_messages.total }}</span>
           </a>
         {% endif %}
         <div class="dropdown">

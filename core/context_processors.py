@@ -7,6 +7,7 @@ from django.utils import timezone
 from companies.models import Company
 from documents.models import CompanyDocument
 from tenders.models import Tender
+from .models import MessageThread
 from .tenancy import filter_queryset_for_user, user_access_status, user_can_manage_users, user_has_full_access, user_organization
 from .update_service import get_update_status, web_updates_enabled
 
@@ -67,3 +68,18 @@ def tenderai_user_context(request):
             'organization': organization,
         }
     }
+
+
+def tenderai_messages(request):
+    if not request.user.is_authenticated:
+        return {'tenderai_messages': {'total': 0}}
+    queryset = MessageThread.objects.all()
+    if not request.user.is_superuser:
+        organization = user_organization(request.user)
+        queryset = queryset.filter(
+            models.Q(visibility=MessageThread.Visibility.PUBLIC)
+            | models.Q(created_by=request.user)
+            | models.Q(recipient=request.user)
+            | models.Q(organization=organization, visibility=MessageThread.Visibility.PUBLIC)
+        ).distinct()
+    return {'tenderai_messages': {'total': queryset.count()}}

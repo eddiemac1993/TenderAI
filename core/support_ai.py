@@ -50,12 +50,6 @@ SUPPORT_TOPICS = [
         ),
     },
     {
-        'keywords': ['council', 'cdf', 'facebook', 'grant', 'bursary'],
-        'answer': (
-            'Use Council Opportunities to view public council posts. Add or update council Facebook URLs from the council source list/admin, then run the council scraper.'
-        ),
-    },
-    {
         'keywords': ['update app', 'github pull', 'new version'],
         'answer': (
             'When updates are available, use the Update link in the navigation. It runs the safe local update process, then you may need to restart TenderAI.'
@@ -64,7 +58,7 @@ SUPPORT_TOPICS = [
     {
         'keywords': ['admin', 'password', 'superuser'],
         'answer': (
-            'Open Admin from the navigation and sign in with your Django superuser. From admin you can manage companies, documents, tenders, council pages, and support chats.'
+            'Open Admin from the navigation and sign in with your Django superuser. From admin you can manage companies, documents, tenders, users, and support chats.'
         ),
     },
 ]
