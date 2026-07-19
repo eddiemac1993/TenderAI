@@ -52,6 +52,60 @@ body.auth-page .app-shell {
   padding: 2rem;
 }
 
+.app-launch-screen {
+  align-items: center;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(217, 154, 38, 0.18), transparent 28%),
+    linear-gradient(160deg, #102f3f, #165d59);
+  bottom: 0;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 2rem;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 9999;
+}
+
+.app-launch-screen[hidden] {
+  display: none !important;
+}
+
+.app-launch-screen.is-closing {
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.app-launch-card {
+  max-width: 380px;
+  text-align: center;
+}
+
+.app-launch-logo {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.24);
+  height: 108px;
+  margin-bottom: 1.15rem;
+  padding: 0.9rem;
+  width: 108px;
+}
+
+.app-launch-card h1 {
+  color: #fff;
+  font-size: 2rem;
+  margin-bottom: 0.45rem;
+}
+
+.app-launch-card p {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
 h1,
 h2,
 h3,

@@ -19,6 +19,27 @@
     }
   }
 
+  function isInstalledAppWindow() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  function showLaunchScreenBriefly() {
+    const launchScreen = document.querySelector('[data-app-launch-screen]');
+    if (!launchScreen || !isInstalledAppWindow()) {
+      return;
+    }
+    launchScreen.hidden = false;
+    window.setTimeout(function () {
+      launchScreen.classList.add('is-closing');
+      window.setTimeout(function () {
+        launchScreen.hidden = true;
+        launchScreen.classList.remove('is-closing');
+      }, 280);
+    }, 1250);
+  }
+
+  showLaunchScreenBriefly();
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('/serviceworker.js').catch(function () {
