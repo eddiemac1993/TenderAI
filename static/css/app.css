@@ -383,18 +383,8 @@ h6,
 }
 
 .topbar-message-button {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.35rem;
-}
-
-.topbar-message-icon {
-  font-size: 0.95rem;
-  line-height: 1;
-}
-
-.topbar-message-label {
-  font-weight: 800;
+  color: var(--app-ink);
+  text-decoration: none;
 }
 
 .floating-help-chat {
