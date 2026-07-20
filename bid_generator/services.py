@@ -298,6 +298,20 @@ def expand_xml_bid_items(items):
                 })
                 next_order += 1
             continue
+        if len(response_items) == 1 and is_generic_xml_requirement(item):
+            response = response_items[0]
+            expanded.append({
+                **item,
+                'order': next_order,
+                'requirement': clean_split_requirement_label(response),
+                'response': response,
+                'response_items': [response],
+                'title': f'{clean_split_requirement_label(response)} - {response}',
+                'parent_reference': item.get('reference') or '',
+                'reference': item.get('reference') or f'XML {next_order}',
+            })
+            next_order += 1
+            continue
         expanded.append({**item, 'order': next_order})
         next_order += 1
     return expanded
@@ -306,14 +320,21 @@ def expand_xml_bid_items(items):
 def should_split_xml_item(item, response_items):
     if len(response_items) <= 1:
         return False
+    return is_generic_xml_requirement(item)
+
+
+def is_generic_xml_requirement(item):
     requirement = normalize_match_text(item.get('requirement') or item.get('title') or '')
     generic_words = [
         'preliminary requirements',
         'preliminiary requirements',
+        'preliminery requirements',
         'preliminary evaluation',
         'preliminiary evaluation',
+        'preliminery evaluation',
         'preliminary examination',
         'preliminiary examination',
+        'preliminery examination',
         'evaluation criteria',
         'examination criteria',
         'mandatory requirements',
@@ -335,6 +356,8 @@ def should_split_xml_item(item, response_items):
 def clean_split_requirement_label(response):
     text = re.sub(r'\s+', ' ', str(response or '')).strip(' .;:-')
     normal = normalize_match_text(text)
+    if 'signed quotation' in normal or 'submit a quotation' in normal:
+        return 'Signed Quotation'
     if 'power of attorney' in normal:
         return 'Power of Attorney'
     if 'bid submission form' in normal or 'bid form' in normal:
@@ -345,13 +368,21 @@ def clean_split_requirement_label(response):
         return 'PACRA Printout / Beneficial Ownership'
     if 'pacra certificate' in normal or 'certificate of incorporation' in normal:
         return 'PACRA Certificate of Incorporation'
-    if 'zra tax' in normal or 'tax clearance' in normal:
+    if 'zra tax' in normal or 'tax clearance' in normal or 'zra clearance' in normal:
         return 'ZRA Tax Clearance Certificate'
-    if 'napsa' in normal or 'workers compensation' in normal:
-        return 'NAPSA / Workers Compensation Compliance'
+    if 'napsa' in normal:
+        return 'NAPSA Compliance Certificate'
+    if 'workers compensation' in normal:
+        return 'Workers Compensation Compliance Certificate'
+    if 'technical specification' in normal or 'technical specifications' in normal:
+        return 'Technical Specifications Response'
+    if 'delivery period' in normal:
+        return 'Delivery Period Confirmation'
+    if 'payment' in normal:
+        return 'Payment Terms Confirmation'
     for _ in range(3):
         text = re.sub(
-            r'^(submit|attach|provide|state|copy of|bidders? must provide|bidders? should submit)\s+',
+            r'^(bidders?\s+(?:to|shall|must|should)\s+|submit|attach|provide|state|indicate|copy of|bidders? must provide|bidders? should submit)\s+',
             '',
             text,
             flags=re.I,
@@ -419,8 +450,24 @@ def submission_order_rows(bid_pack):
 def xml_response_lines(item):
     lines = [line.strip() for line in item.get('response_items') or [] if str(line).strip()]
     if not lines and item.get('response'):
-        lines = [line.strip() for line in str(item.get('response')).split(';') if line.strip()]
+        lines = split_grouped_xml_response_text(item.get('response'))
+    elif len(lines) == 1 and ';' in lines[0]:
+        lines = split_grouped_xml_response_text(lines[0])
     return lines
+
+
+def split_grouped_xml_response_text(response):
+    response = re.sub(r'\s+', ' ', str(response or '')).strip()
+    if not response:
+        return []
+    parts = re.split(
+        r';\s*(?=(?:Bidders?\s+(?:to|shall|must|should)|Attach|Provide|Indicate|Submit|Complete|Signed?|Valid|Availability|Evidence|Documentary|Warranty|Delivery|Payment)\b)',
+        response,
+        flags=re.I,
+    )
+    if len(parts) == 1 and ';' in response:
+        parts = response.split(';')
+    return [part.strip(' ;') for part in parts if part.strip(' ;')][:30]
 
 
 def prepared_output_for_xml_item(bid_pack, item):
@@ -436,6 +483,8 @@ def prepared_output_for_xml_item(bid_pack, item):
         if is_price_schedule_requirement(text):
             return 'Letter of Bid plus Price Schedule'
         return 'Letter of Bid / Tender Submission Letter'
+    if is_price_schedule_requirement(text):
+        return 'Signed quotation / price schedule'
     if is_power_of_attorney_requirement(text):
         return 'Power of Attorney / Signatory Authorisation form'
     if form_code:
@@ -1257,6 +1306,8 @@ def is_price_schedule_requirement(text):
         'bill of quantities',
         'boq',
         'commercial offer',
+        'signed quotation',
+        'submit a quotation',
     ])
 
 
@@ -3180,7 +3231,7 @@ DOCUMENT_MATCH_RULES = [
         'capacity building', 'machine orientation', 'operator orientation',
     ]),
     (CompanyDocument.DocumentType.WARRANTY_UNDERTAKING, [
-        'warranty', 'undertaking', 'delivery period', 'warranty period',
+        'warranty undertaking', 'warranty letter', 'warranty period',
     ]),
     (CompanyDocument.DocumentType.PAST_CONTRACT, [
         'similar experience', 'past contract', 'traceable references',
@@ -3326,6 +3377,8 @@ def prepared_output_for_bid_document(bid_document):
         if is_price_schedule_requirement(text):
             return 'Letter of Bid plus Price Schedule'
         return 'Letter of Bid / Tender Submission Letter'
+    if is_price_schedule_requirement(text):
+        return 'Signed quotation / price schedule'
     if is_power_of_attorney_requirement(text):
         return 'Power of Attorney / Signatory Authorisation form'
     if form_code:

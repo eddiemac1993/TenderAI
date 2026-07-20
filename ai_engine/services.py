@@ -578,14 +578,18 @@ def split_xml_response_items(response):
     response = re.sub(r'\s+', ' ', response or '').strip()
     if not response:
         return []
-    parts = re.split(r';\s*(?=(?:Attach|Provide|Indicate|Submit|Complete|Signed?|Valid|Availability|Evidence|Documentary|Warranty|Delivery|\([ivx]+\)|[A-Z][a-z]+)\b)', response)
+    parts = re.split(
+        r';\s*(?=(?:Bidders?\s+(?:to|shall|must|should)|Attach|Provide|Indicate|Submit|Complete|Signed?|Valid|Availability|Evidence|Documentary|Warranty|Delivery|Payment|\([ivx]+\)|[A-Z][a-z]+)\b)',
+        response,
+        flags=re.I,
+    )
     cleaned = []
     for part in parts:
         item = part.strip(' ;')
         if not item:
             continue
         cleaned.append(item)
-    if len(cleaned) == 1 and len(cleaned[0]) > 180:
+    if len(cleaned) == 1 and ';' in response:
         cleaned = [item.strip(' ;') for item in response.split(';') if item.strip(' ;')]
     return cleaned[:30]
 
