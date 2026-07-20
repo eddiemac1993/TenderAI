@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import timedelta
+from pathlib import Path
 
 from django.contrib import messages
 from django.db.models import Q
@@ -68,6 +69,14 @@ def add_tender_upload_messages(request, result):
             messages.info(request, f'Created {result["created_tasks"]} bid task(s) from the uploaded files.')
     if result['skipped']:
         messages.warning(request, 'Skipped unsupported file(s): ' + ', '.join(result['skipped'][:5]))
+
+
+def title_from_uploaded_files(uploaded_files):
+    for uploaded_file in uploaded_files:
+        stem = Path(uploaded_file.name).stem.replace('_', ' ').replace('-', ' ').strip()
+        if stem:
+            return stem[:220]
+    return 'Limited tender from uploaded files'
 
 
 class TenderListView(ListView):
@@ -215,33 +224,26 @@ class TenderFileUploadChooserView(TemplateView):
         return context
 
     def post(self, request, *args, **kwargs):
-        upload_mode = request.POST.get('upload_mode', 'existing')
+        upload_mode = request.POST.get('upload_mode', 'quick')
         tender_id = request.POST.get('tender')
         uploaded_files = request.FILES.getlist('files')
         if not uploaded_files:
             messages.error(request, 'Please choose at least one PDF, DOCX, XML, or text file.')
             return redirect('tenders:upload_files_choose')
 
-        if upload_mode == 'new':
-            title = request.POST.get('title', '').strip()
-            procuring_entity = request.POST.get('procuring_entity', '').strip()
-            if not title or not procuring_entity:
-                messages.error(request, 'Please enter the tender title and procuring entity for the new limited tender.')
+        if upload_mode == 'existing':
+            if not tender_id:
+                messages.error(request, 'Please choose the tender these files belong to.')
                 return redirect('tenders:upload_files_choose')
+            tender = get_object_or_404(Tender, pk=tender_id)
+        else:
             tender = Tender.objects.create(
-                title=title,
-                tender_number=request.POST.get('tender_number', '').strip(),
-                procuring_entity=procuring_entity,
-                closing_date=request.POST.get('closing_date') or None,
+                title=title_from_uploaded_files(uploaded_files),
+                procuring_entity='Limited ZPPA tender',
                 source=Tender.Source.MANUAL,
                 status=Tender.Status.NEW,
                 notes='Limited/manual tender created from uploaded solicitation/XML files.',
             )
-        else:
-            if not tender_id:
-                messages.error(request, 'Please choose the tender these files belong to, or use Create new limited tender.')
-                return redirect('tenders:upload_files_choose')
-            tender = get_object_or_404(Tender, pk=tender_id)
 
         result = analyze_uploaded_tender_files(tender, uploaded_files)
         add_tender_upload_messages(request, result)
