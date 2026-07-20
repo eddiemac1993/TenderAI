@@ -215,15 +215,34 @@ class TenderFileUploadChooserView(TemplateView):
         return context
 
     def post(self, request, *args, **kwargs):
+        upload_mode = request.POST.get('upload_mode', 'existing')
         tender_id = request.POST.get('tender')
         uploaded_files = request.FILES.getlist('files')
-        if not tender_id:
-            messages.error(request, 'Please choose the tender these files belong to.')
-            return redirect('tenders:upload_files_choose')
-        tender = get_object_or_404(Tender, pk=tender_id)
         if not uploaded_files:
             messages.error(request, 'Please choose at least one PDF, DOCX, XML, or text file.')
             return redirect('tenders:upload_files_choose')
+
+        if upload_mode == 'new':
+            title = request.POST.get('title', '').strip()
+            procuring_entity = request.POST.get('procuring_entity', '').strip()
+            if not title or not procuring_entity:
+                messages.error(request, 'Please enter the tender title and procuring entity for the new limited tender.')
+                return redirect('tenders:upload_files_choose')
+            tender = Tender.objects.create(
+                title=title,
+                tender_number=request.POST.get('tender_number', '').strip(),
+                procuring_entity=procuring_entity,
+                closing_date=request.POST.get('closing_date') or None,
+                source=Tender.Source.MANUAL,
+                status=Tender.Status.NEW,
+                notes='Limited/manual tender created from uploaded solicitation/XML files.',
+            )
+        else:
+            if not tender_id:
+                messages.error(request, 'Please choose the tender these files belong to, or use Create new limited tender.')
+                return redirect('tenders:upload_files_choose')
+            tender = get_object_or_404(Tender, pk=tender_id)
+
         result = analyze_uploaded_tender_files(tender, uploaded_files)
         add_tender_upload_messages(request, result)
         return redirect(tender)

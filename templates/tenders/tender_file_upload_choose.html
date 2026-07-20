@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow mb-1">Limited tender files</p>
     <h1 class="h3 mb-1">Upload solicitation or XML</h1>
-    <p class="text-muted mb-0">Choose the tender, then upload the solicitation PDF/DOCX and Tender Structure XML together.</p>
+    <p class="text-muted mb-0">Upload files for an existing tender, or create a new limited/manual tender in the same step.</p>
   </div>
   <a class="btn btn-outline-secondary" href="{% url 'tenders:list' %}">Back to tenders</a>
 </div>
@@ -14,15 +14,56 @@
   <div class="col-lg-7">
     <form method="post" enctype="multipart/form-data" class="section-panel tender-file-upload-card">
       {% csrf_token %}
-      <div class="mb-3">
-        <label class="form-label h5" for="id_tender">Tender</label>
-        <select class="form-select form-select-lg" id="id_tender" name="tender" required>
-          <option value="">Select tender</option>
-          {% for tender in tender_options %}
-            <option value="{{ tender.pk }}">{{ tender.title }}{% if tender.procuring_entity %} - {{ tender.procuring_entity }}{% endif %}</option>
-          {% endfor %}
-        </select>
+      <div class="upload-mode-toggle mb-3">
+        <label class="upload-mode-card">
+          <input type="radio" name="upload_mode" value="existing" checked data-upload-mode="existing">
+          <span>
+            <strong>Use existing tender</strong>
+            <small>Select a tender already in TenderAI.</small>
+          </span>
+        </label>
+        <label class="upload-mode-card">
+          <input type="radio" name="upload_mode" value="new" data-upload-mode="new">
+          <span>
+            <strong>Create new limited tender</strong>
+            <small>Use this when ZPPA cannot publicly import it.</small>
+          </span>
+        </label>
       </div>
+
+      <div class="upload-mode-section" data-upload-existing>
+        <div class="mb-3">
+          <label class="form-label h5" for="id_tender">Tender</label>
+          <select class="form-select form-select-lg" id="id_tender" name="tender">
+            <option value="">Select tender</option>
+            {% for tender in tender_options %}
+              <option value="{{ tender.pk }}">{{ tender.title }}{% if tender.procuring_entity %} - {{ tender.procuring_entity }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="upload-mode-section" data-upload-new hidden>
+        <div class="mb-3">
+          <label class="form-label h5" for="id_title">Tender title</label>
+          <input class="form-control form-control-lg" id="id_title" name="title" placeholder="Enter tender title">
+        </div>
+        <div class="mb-3">
+          <label class="form-label h5" for="id_procuring_entity">Procuring entity</label>
+          <input class="form-control form-control-lg" id="id_procuring_entity" name="procuring_entity" placeholder="Enter procuring entity">
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label" for="id_tender_number">Tender number</label>
+            <input class="form-control" id="id_tender_number" name="tender_number" placeholder="Optional">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="id_closing_date">Closing date</label>
+            <input class="form-control" id="id_closing_date" type="date" name="closing_date">
+          </div>
+        </div>
+      </div>
+
       <div class="mb-3">
         <label class="form-label h5" for="id_tender_files">Files</label>
         <input class="form-control form-control-lg" id="id_tender_files" type="file" name="files" accept=".pdf,.docx,.xml,.txt" multiple required>
@@ -42,7 +83,7 @@
       <h2 class="h5">Use this for limited tenders</h2>
       <p class="text-muted">If ZPPA cannot provide public documents, download the files yourself, then upload them here.</p>
       <ol class="instruction-list">
-        <li>Select the tender from the list.</li>
+        <li>Select an existing tender, or choose Create new limited tender.</li>
         <li>Upload the solicitation document and XML file.</li>
         <li>TenderAI analyzes the files and opens the tender workspace.</li>
         <li>Review the requirements, then generate bid documents.</li>
@@ -50,4 +91,14 @@
     </div>
   </div>
 </div>
+<script>
+  document.addEventListener('change', function (event) {
+    if (!event.target.matches('[data-upload-mode]')) {
+      return;
+    }
+    const useNew = event.target.value === 'new';
+    document.querySelector('[data-upload-existing]').hidden = useNew;
+    document.querySelector('[data-upload-new]').hidden = !useNew;
+  });
+</script>
 {% endblock %}

@@ -619,6 +619,41 @@ h6,
   padding: 0.28rem 0.62rem;
 }
 
+.upload-mode-toggle {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upload-mode-card {
+  align-items: flex-start;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.upload-mode-card:has(input:checked) {
+  background: rgba(22, 93, 89, 0.08);
+  border-color: rgba(22, 93, 89, 0.35);
+}
+
+.upload-mode-card input {
+  margin-top: 0.2rem;
+}
+
+.upload-mode-card strong,
+.upload-mode-card small {
+  display: block;
+}
+
+.upload-mode-card small {
+  color: var(--app-muted);
+  margin-top: 0.15rem;
+}
+
 .dashboard-hero .eyebrow,
 .dashboard-hero .hero-copy {
   color: rgba(255, 255, 255, 0.82);
@@ -2572,6 +2607,10 @@ textarea.form-control {
   .bidpack-grid,
   .company-card-grid,
   .instruction-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-mode-toggle {
     grid-template-columns: 1fr;
   }
 
