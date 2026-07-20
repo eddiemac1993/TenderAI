@@ -9,6 +9,7 @@ urlpatterns = [
     path('new/', views.TenderCreateView.as_view(), name='create'),
     path('requirements/', views.RequirementListView.as_view(), name='requirements'),
     path('requirements/new/', views.RequirementCreateView.as_view(), name='requirement_create'),
+    path('upload-files/', views.TenderFileUploadChooserView.as_view(), name='upload_files_choose'),
     path('zppa/scrape-today/', views.scrape_zppa_today, name='zppa_scrape_today'),
     path('zppa/find-by-url/', views.ZppaUrlImportView.as_view(), name='zppa_find_by_url'),
     path('zppa/scrape-logs/', views.ZppaScrapeLogListView.as_view(), name='zppa_scrape_logs'),

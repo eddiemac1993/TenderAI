@@ -31,6 +31,45 @@ from .zppa_documents import PublicZppaDocumentFetcher
 from .zppa_scraper import bid_security_amount_from_detail_rows, import_public_zppa_tender_from_url, import_public_zppa_tenders, payment_amount_from_detail_rows
 
 
+ALLOWED_TENDER_UPLOAD_EXTENSIONS = ('.pdf', '.docx', '.xml', '.txt')
+
+
+def analyze_uploaded_tender_files(tender, uploaded_files):
+    analyzed_count = 0
+    skipped = []
+    created_tasks = 0
+    required_signals = 0
+    for uploaded_file in uploaded_files:
+        if not uploaded_file.name.lower().endswith(ALLOWED_TENDER_UPLOAD_EXTENSIONS):
+            skipped.append(uploaded_file.name)
+            continue
+        document = SolicitationDocument(tender=tender)
+        document.file.save(uploaded_file.name, uploaded_file, save=True)
+        analysis = process_solicitation_document(document)
+        analyzed_count += 1
+        created_tasks += int(analysis.get('bid_tasks_created') or 0)
+        required_signals += len(analysis.get('required_documents', []))
+    return {
+        'analyzed_count': analyzed_count,
+        'skipped': skipped,
+        'created_tasks': created_tasks,
+        'required_signals': required_signals,
+    }
+
+
+def add_tender_upload_messages(request, result):
+    if result['analyzed_count']:
+        messages.success(
+            request,
+            f'Uploaded and analyzed {result["analyzed_count"]} tender file(s). '
+            f'Found {result["required_signals"]} required document signal(s).',
+        )
+        if result['created_tasks']:
+            messages.info(request, f'Created {result["created_tasks"]} bid task(s) from the uploaded files.')
+    if result['skipped']:
+        messages.warning(request, 'Skipped unsupported file(s): ' + ', '.join(result['skipped'][:5]))
+
+
 class TenderListView(ListView):
     model = Tender
     template_name = 'tenders/tender_list.html'
@@ -160,31 +199,33 @@ class TenderFileUploadView(DetailView):
             messages.error(request, 'Please choose at least one PDF, DOCX, XML, or text file.')
             return redirect('tenders:upload_files', pk=tender.pk)
 
-        allowed_extensions = ('.pdf', '.docx', '.xml', '.txt')
-        analyzed_count = 0
-        skipped = []
-        created_tasks = 0
-        required_signals = 0
-        for uploaded_file in uploaded_files:
-            if not uploaded_file.name.lower().endswith(allowed_extensions):
-                skipped.append(uploaded_file.name)
-                continue
-            document = SolicitationDocument(tender=tender)
-            document.file.save(uploaded_file.name, uploaded_file, save=True)
-            analysis = process_solicitation_document(document)
-            analyzed_count += 1
-            created_tasks += int(analysis.get('bid_tasks_created') or 0)
-            required_signals += len(analysis.get('required_documents', []))
+        result = analyze_uploaded_tender_files(tender, uploaded_files)
+        add_tender_upload_messages(request, result)
+        return redirect(tender)
 
-        if analyzed_count:
-            messages.success(
-                request,
-                f'Uploaded and analyzed {analyzed_count} tender file(s). Found {required_signals} required document signal(s).',
-            )
-            if created_tasks:
-                messages.info(request, f'Created {created_tasks} bid task(s) from the uploaded files.')
-        if skipped:
-            messages.warning(request, 'Skipped unsupported file(s): ' + ', '.join(skipped[:5]))
+
+class TenderFileUploadChooserView(TemplateView):
+    template_name = 'tenders/tender_file_upload_choose.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tender_options'] = Tender.objects.annotate(
+            latest_at=Coalesce('published_at', 'created_at')
+        ).order_by('-latest_at', '-id')[:250]
+        return context
+
+    def post(self, request, *args, **kwargs):
+        tender_id = request.POST.get('tender')
+        uploaded_files = request.FILES.getlist('files')
+        if not tender_id:
+            messages.error(request, 'Please choose the tender these files belong to.')
+            return redirect('tenders:upload_files_choose')
+        tender = get_object_or_404(Tender, pk=tender_id)
+        if not uploaded_files:
+            messages.error(request, 'Please choose at least one PDF, DOCX, XML, or text file.')
+            return redirect('tenders:upload_files_choose')
+        result = analyze_uploaded_tender_files(tender, uploaded_files)
+        add_tender_upload_messages(request, result)
         return redirect(tender)
 
 

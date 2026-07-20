@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Upload Tender Files{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow mb-1">Limited tender files</p>
+    <h1 class="h3 mb-1">Upload solicitation or XML</h1>
+    <p class="text-muted mb-0">Choose the tender, then upload the solicitation PDF/DOCX and Tender Structure XML together.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'tenders:list' %}">Back to tenders</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <form method="post" enctype="multipart/form-data" class="section-panel tender-file-upload-card">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label h5" for="id_tender">Tender</label>
+        <select class="form-select form-select-lg" id="id_tender" name="tender" required>
+          <option value="">Select tender</option>
+          {% for tender in tender_options %}
+            <option value="{{ tender.pk }}">{{ tender.title }}{% if tender.procuring_entity %} - {{ tender.procuring_entity }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label h5" for="id_tender_files">Files</label>
+        <input class="form-control form-control-lg" id="id_tender_files" type="file" name="files" accept=".pdf,.docx,.xml,.txt" multiple required>
+        <p class="text-muted small mt-2 mb-0">Supported: PDF, DOCX, XML, and TXT. You can upload more than one file at the same time.</p>
+      </div>
+      <div class="upload-file-hints">
+        <span>Solicitation PDF</span>
+        <span>DOCX</span>
+        <span>Tender XML</span>
+        <span>TXT</span>
+      </div>
+      <button class="btn btn-primary btn-lg mt-3" type="submit">Upload and analyze</button>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="section-panel h-100">
+      <h2 class="h5">Use this for limited tenders</h2>
+      <p class="text-muted">If ZPPA cannot provide public documents, download the files yourself, then upload them here.</p>
+      <ol class="instruction-list">
+        <li>Select the tender from the list.</li>
+        <li>Upload the solicitation document and XML file.</li>
+        <li>TenderAI analyzes the files and opens the tender workspace.</li>
+        <li>Review the requirements, then generate bid documents.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+{% endblock %}
