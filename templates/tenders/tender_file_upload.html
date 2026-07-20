@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Upload Tender Files{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow mb-1">Simple tender upload</p>
+    <h1 class="h3 mb-1">Upload Tender Files</h1>
+    <p class="text-muted mb-0">{{ tender.title }}</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ tender.get_absolute_url }}">Back to tender</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <form method="post" enctype="multipart/form-data" class="section-panel tender-file-upload-card">
+      {% csrf_token %}
+      <label class="form-label h5" for="id_tender_files">Choose solicitation/XML files</label>
+      <input class="form-control form-control-lg" id="id_tender_files" type="file" name="files" accept=".pdf,.docx,.xml,.txt" multiple required>
+      <p class="text-muted small mt-2 mb-0">You can select the solicitation PDF/DOCX and Tender Structure XML at the same time.</p>
+      <div class="upload-file-hints">
+        <span>PDF</span>
+        <span>DOCX</span>
+        <span>XML</span>
+        <span>TXT</span>
+      </div>
+      <button class="btn btn-primary btn-lg mt-3" type="submit">Upload and analyze</button>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="section-panel h-100">
+      <h2 class="h5">What happens next?</h2>
+      <ol class="instruction-list">
+        <li>TenderAI reads the uploaded PDF, DOCX, XML, or text file.</li>
+        <li>It extracts requirements, dates, forms, ITB items, and XML response structure.</li>
+        <li>The tender page updates with requirements and checklist signals.</li>
+        <li>You can then generate bid documents using your selected company.</li>
+      </ol>
+      <div class="alert alert-warning mb-0 mt-3">
+        TenderAI helps prepare the work, but always confirm the final bid against the original solicitation before submission.
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if tender.solicitation_documents.exists %}
+  <div class="section-panel mt-4">
+    <div class="section-heading">
+      <div>
+        <h2 class="h5 mb-1">Uploaded tender files</h2>
+        <p class="text-muted mb-0">Latest uploaded files for this tender.</p>
+      </div>
+    </div>
+    <div class="ai-doc-list">
+      {% for document in tender.solicitation_documents.all %}
+        <div class="ai-doc-card">
+          <strong>File {{ forloop.counter }}</strong>
+          <div class="text-muted small text-break">{{ document.file.name }}</div>
+          <div class="text-muted small">Uploaded {{ document.uploaded_at|date:"d/m/Y H:i" }}</div>
+          <div class="small mt-2">
+            <span class="fw-semibold">Required docs:</span>
+            {{ document.analysis_summary.required_documents|join:", "|default:"None found yet" }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

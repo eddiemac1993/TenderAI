@@ -148,6 +148,46 @@ class TenderDetailView(DetailView):
         return context
 
 
+class TenderFileUploadView(DetailView):
+    model = Tender
+    template_name = 'tenders/tender_file_upload.html'
+    context_object_name = 'tender'
+
+    def post(self, request, *args, **kwargs):
+        tender = self.get_object()
+        uploaded_files = request.FILES.getlist('files')
+        if not uploaded_files:
+            messages.error(request, 'Please choose at least one PDF, DOCX, XML, or text file.')
+            return redirect('tenders:upload_files', pk=tender.pk)
+
+        allowed_extensions = ('.pdf', '.docx', '.xml', '.txt')
+        analyzed_count = 0
+        skipped = []
+        created_tasks = 0
+        required_signals = 0
+        for uploaded_file in uploaded_files:
+            if not uploaded_file.name.lower().endswith(allowed_extensions):
+                skipped.append(uploaded_file.name)
+                continue
+            document = SolicitationDocument(tender=tender)
+            document.file.save(uploaded_file.name, uploaded_file, save=True)
+            analysis = process_solicitation_document(document)
+            analyzed_count += 1
+            created_tasks += int(analysis.get('bid_tasks_created') or 0)
+            required_signals += len(analysis.get('required_documents', []))
+
+        if analyzed_count:
+            messages.success(
+                request,
+                f'Uploaded and analyzed {analyzed_count} tender file(s). Found {required_signals} required document signal(s).',
+            )
+            if created_tasks:
+                messages.info(request, f'Created {created_tasks} bid task(s) from the uploaded files.')
+        if skipped:
+            messages.warning(request, 'Skipped unsupported file(s): ' + ', '.join(skipped[:5]))
+        return redirect(tender)
+
+
 class TenderCreateView(CreateView):
     model = Tender
     form_class = TenderForm

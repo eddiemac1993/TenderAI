@@ -18,6 +18,7 @@ urlpatterns = [
     path('<int:pk>/requirements/', views.RequirementListView.as_view(), name='tender_requirements'),
     path('<int:tender_id>/requirements/new/', views.RequirementCreateView.as_view(), name='tender_requirement_create'),
     path('<int:pk>/match/', views.TenderMatchView.as_view(), name='match'),
+    path('<int:pk>/upload-files/', views.TenderFileUploadView.as_view(), name='upload_files'),
     path('<int:pk>/tasks/', views.BidTaskListView.as_view(), name='tasks'),
     path('<int:pk>/tasks/new/', views.BidTaskCreateView.as_view(), name='task_create'),
     path('<int:pk>/tasks/<int:task_id>/status/', views.update_bid_task_status, name='task_status'),

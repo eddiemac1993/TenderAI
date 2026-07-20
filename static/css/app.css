@@ -598,6 +598,27 @@ h6,
   padding-left: 1.2rem;
 }
 
+.tender-file-upload-card {
+  border-color: rgba(22, 93, 89, 0.22);
+}
+
+.upload-file-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.upload-file-hints span {
+  background: rgba(22, 93, 89, 0.09);
+  border: 1px solid rgba(22, 93, 89, 0.18);
+  border-radius: 999px;
+  color: var(--app-primary-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.28rem 0.62rem;
+}
+
 .dashboard-hero .eyebrow,
 .dashboard-hero .hero-copy {
   color: rgba(255, 255, 255, 0.82);
