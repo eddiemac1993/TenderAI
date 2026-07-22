@@ -2291,27 +2291,40 @@ def bid_document_rows_for_display(bid_pack):
     for document in bid_pack.bid_documents.order_by('order'):
         required_type = expected_document_type_for_text(f'{document.requirement} {document.expected_response}')
         attachment_warning = bid_document_attachment_warning(document)
+        instruction_lines = document.expected_response_lines or [document.requirement]
+        primary_instruction = instruction_lines[0] if instruction_lines else document.requirement
+        document_label = ''
+        detail_note = ''
         if document.matched_company_document:
             if document.matched_company_document.is_expired:
                 status = 'Expired'
                 badge = 'danger'
                 action = attachment_warning
+                detail_note = 'The uploaded company document is expired. Upload a valid copy before submission.'
             elif attachment_warning:
                 status = 'Upgrade required'
                 badge = 'warning'
                 action = attachment_warning
+                detail_note = 'The attached document exists, but it may not fully satisfy this tender instruction.'
             else:
                 status = 'Ready'
                 badge = 'success'
                 action = f'{document.matched_company_document.get_document_type_display()} attached'
+                detail_note = 'TenderAI will attach this uploaded company document after the instruction page.'
+            document_label = (
+                f'{document.matched_company_document.get_document_type_display()} - '
+                f'{document.matched_company_document.title or document.matched_company_document.get_document_type_display()}'
+            )
         elif required_type:
             status = 'Missing'
             badge = 'warning'
             action = f'Upload {required_type.label}'
+            detail_note = 'Required certificate/document is not uploaded yet. Upload it under company documents, then regenerate.'
         else:
             status = 'Prepare'
             badge = 'info'
             action = prepared_output_for_bid_document(document)
+            detail_note = 'TenderAI will generate a draft form, letter, table, or response page for review.'
         rows.append({
             'document': document,
             'required_type': required_type,
@@ -2319,6 +2332,10 @@ def bid_document_rows_for_display(bid_pack):
             'badge': badge,
             'action': action,
             'warning': attachment_warning,
+            'instruction_lines': instruction_lines,
+            'primary_instruction': primary_instruction,
+            'document_label': document_label,
+            'detail_note': detail_note,
         })
     return rows
 

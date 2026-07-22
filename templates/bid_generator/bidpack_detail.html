@@ -217,14 +217,14 @@
         <strong>Sample structure guide:</strong>
         TenderAI formats generated forms using the closest detected solicitation/ZPPA sample style. For example, a Bid-Securing Declaration is generated as FORM V with Times New Roman text, right/center headings, field lines, numbered clauses, and a signature block.
       </div>
-      <div class="table-responsive">
-        <table class="table align-middle mb-0">
+      <div class="table-responsive generated-bid-table-wrap d-none d-lg-block">
+        <table class="table align-middle mb-0 generated-bid-table">
           <thead>
             <tr>
               <th>No.</th>
               <th>Part</th>
-              <th>Requirement</th>
-              <th>What will be prepared</th>
+              <th>XML requirement</th>
+              <th>What TenderAI will prepare</th>
               <th>Status</th>
               <th></th>
             </tr>
@@ -233,29 +233,30 @@
             {% for row in bid_document_rows %}
               {% with document=row.document %}
               <tr>
-                <td>{{ document.order }}</td>
-                <td>{{ document.envelope|default:"-" }}</td>
+                <td><span class="generated-bid-number">{{ document.order }}</span></td>
                 <td>
-                  <strong>{{ document.requirement }}</strong>
-                  {% if document.expected_response_lines %}
-                    <ul class="xml-response-list text-muted small">
-                      {% for line in document.expected_response_lines %}
+                  <span class="generated-bid-part">{{ document.envelope|default:"-" }}</span>
+                  {% if document.mandatory %}<span class="generated-bid-mandatory">Mandatory</span>{% endif %}
+                </td>
+                <td>
+                  <strong class="generated-bid-requirement">{{ document.requirement }}</strong>
+                  <div class="generated-bid-instruction">
+                    <span>Instruction from XML</span>
+                    <ul class="xml-response-list">
+                      {% for line in row.instruction_lines %}
                         <li>{{ line }}</li>
                       {% endfor %}
                     </ul>
-                  {% endif %}
+                  </div>
                 </td>
                 <td>
-                  {{ row.action }}
+                  <strong>{{ row.action }}</strong>
                   {% if row.warning %}
                     <div class="small text-warning fw-semibold">{{ row.warning }}</div>
                   {% endif %}
-                  {% if document.matched_company_document %}
-                    <div class="small text-muted">{{ document.matched_company_document.title }}</div>
-                  {% elif row.required_type %}
-                    <div class="small text-muted">Required certificate/document is not uploaded yet.</div>
-                  {% else %}
-                    <div class="small text-muted">TenderAI will generate a draft response for review.</div>
+                  <div class="small text-muted mt-1">{{ row.detail_note }}</div>
+                  {% if row.document_label %}
+                    <div class="generated-bid-attachment">{{ row.document_label }}</div>
                   {% endif %}
                 </td>
                 <td><span class="badge text-bg-{{ row.badge }}">{{ row.status }}</span></td>
@@ -273,6 +274,48 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div class="generated-bid-card-list d-lg-none">
+        {% for row in bid_document_rows %}
+          {% with document=row.document %}
+            <article class="generated-bid-card">
+              <div class="generated-bid-card-top">
+                <span class="generated-bid-number">{{ document.order }}</span>
+                <div>
+                  <span class="generated-bid-part">{{ document.envelope|default:"-" }}</span>
+                  <strong>{{ document.requirement }}</strong>
+                </div>
+                <span class="badge text-bg-{{ row.badge }}">{{ row.status }}</span>
+              </div>
+              <div class="generated-bid-instruction">
+                <span>Instruction from XML</span>
+                <ul class="xml-response-list">
+                  {% for line in row.instruction_lines %}
+                    <li>{{ line }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div class="generated-bid-output">
+                <span>What will be prepared</span>
+                <strong>{{ row.action }}</strong>
+                {% if row.warning %}
+                  <div class="small text-warning fw-semibold">{{ row.warning }}</div>
+                {% endif %}
+                <p>{{ row.detail_note }}</p>
+                {% if row.document_label %}
+                  <div class="generated-bid-attachment">{{ row.document_label }}</div>
+                {% endif %}
+              </div>
+              <div class="generated-bid-card-actions">
+                {% if row.required_type and not document.matched_company_document %}
+                  <a class="btn btn-sm btn-warning" href="{% url 'documents:create' %}?company={{ object.company.pk }}&document_type={{ row.required_type }}&next={{ request.get_full_path|urlencode }}">Upload</a>
+                {% endif %}
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}?inline=1" target="_blank" rel="noopener">View</a>
+                <a class="btn btn-sm btn-primary" href="{% url 'bid_generator:download_document' object.pk document.pk %}">Download</a>
+              </div>
+            </article>
+          {% endwith %}
+        {% endfor %}
       </div>
     </div>
   </div>

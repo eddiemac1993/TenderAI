@@ -1289,6 +1289,131 @@ h6,
   line-height: 1.45;
 }
 
+.generated-bid-table-wrap {
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+}
+
+.generated-bid-table th {
+  color: #667085;
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.generated-bid-table td {
+  vertical-align: top;
+}
+
+.generated-bid-number {
+  align-items: center;
+  background: #ecfdf3;
+  border: 1px solid #a6f4c5;
+  border-radius: 999px;
+  color: #067647;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 800;
+  height: 34px;
+  justify-content: center;
+  min-width: 34px;
+  padding: 0 0.45rem;
+}
+
+.generated-bid-part {
+  background: #f2f4f7;
+  border-radius: 999px;
+  color: #344054;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 0.45rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.generated-bid-mandatory {
+  color: #b42318;
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.generated-bid-requirement {
+  color: #101828;
+  display: block;
+  line-height: 1.35;
+}
+
+.generated-bid-instruction,
+.generated-bid-output {
+  background: #f8fbfd;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  margin-top: 0.55rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.generated-bid-instruction > span,
+.generated-bid-output > span {
+  color: var(--app-muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.generated-bid-attachment {
+  background: #fff7e6;
+  border: 1px solid #fedf89;
+  border-radius: 7px;
+  color: #7a2e0e;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.generated-bid-card-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.generated-bid-card {
+  background: #fff;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  box-shadow: var(--app-shadow);
+  padding: 0.9rem;
+}
+
+.generated-bid-card-top {
+  align-items: flex-start;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: auto 1fr auto;
+}
+
+.generated-bid-card-top strong {
+  color: #101828;
+  display: block;
+  line-height: 1.35;
+}
+
+.generated-bid-output p {
+  color: var(--app-muted);
+  font-size: 0.88rem;
+  margin: 0.25rem 0 0;
+}
+
+.generated-bid-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
 .match-card-grid {
   display: grid;
   gap: 0.85rem;
