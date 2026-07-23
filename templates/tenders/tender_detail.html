@@ -12,6 +12,10 @@
     </div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    <form method="post" action="{% url 'tenders:save_workspace' object.pk %}">
+      {% csrf_token %}
+      <button class="btn btn-outline-primary" type="submit">Save Tender</button>
+    </form>
     <a class="btn btn-primary" href="{% url 'tenders:upload_files' object.pk %}">Upload Tender Files</a>
     {% if object.itb_11_items %}
       <a class="btn btn-outline-primary" href="{% url 'tenders:download_xml_structure_pdf' object.pk %}?inline=1" target="_blank" rel="noopener">View XML PDF</a>
@@ -20,6 +24,99 @@
     {% if object.imported_reference %}<a class="btn btn-outline-secondary" href="{{ object.imported_reference }}" target="_blank" rel="noopener">Open ZPPA</a>{% endif %}
   </div>
 </div>
+
+{% if workspace_tree.total %}
+<div class="section-panel mb-4 tender-structure-workspace">
+  <div class="section-heading">
+    <div>
+      <div class="eyebrow">XML tender workspace</div>
+      <h2 class="h5 mb-1">Submission structure from tender XML</h2>
+      <p class="text-muted mb-0">This tree is generated from the tender XML. Use it as the working checklist before creating bid documents.</p>
+    </div>
+    <form method="get" class="workspace-company-picker">
+      <label class="form-label small mb-1" for="workspace-company">Company for compliance check</label>
+      <select class="form-select form-select-sm" id="workspace-company" name="company" onchange="this.form.submit()">
+        <option value="">Select company later</option>
+        {% for company in bid_company_options %}
+          <option value="{{ company.pk }}" {% if workspace_selected_company and workspace_selected_company.pk == company.pk %}selected{% endif %}>{{ company.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+  <div class="workspace-progress-grid mb-3">
+    <div class="workspace-progress-card">
+      <span>Overall progress</span>
+      <strong>{{ workspace_tree.percent }}%</strong>
+      <small>{{ workspace_tree.completed }} of {{ workspace_tree.total }} requirement{{ workspace_tree.total|pluralize }} completed</small>
+    </div>
+    <div class="workspace-progress-card">
+      <span>Mandatory items</span>
+      <strong>{{ workspace_tree.mandatory_completed }}/{{ workspace_tree.mandatory_total }}</strong>
+      <small>Mandatory XML requirements completed</small>
+    </div>
+    <div class="workspace-progress-card">
+      <span>Selected company</span>
+      <strong>{% if workspace_selected_company %}{{ workspace_selected_company.name|truncatechars:28 }}{% else %}Not selected{% endif %}</strong>
+      <small>{% if workspace_selected_company %}Documents checked against this profile{% else %}Save tender first, then choose company when ready{% endif %}</small>
+    </div>
+  </div>
+  <div class="progress readiness-progress mb-4">
+    <div class="progress-bar" style="width: {{ workspace_tree.percent }}%"></div>
+  </div>
+  <div class="tender-tree">
+    {% for group in workspace_tree.groups %}
+      <section class="tender-tree-envelope">
+        <button class="tender-tree-header" type="button" data-bs-toggle="collapse" data-bs-target="#workspace-envelope-{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+          <span>
+            <strong>{{ group.name }}</strong>
+            <small>{{ group.completed }} of {{ group.total }} completed</small>
+          </span>
+          <span class="badge text-bg-light border">{{ group.percent }}%</span>
+        </button>
+        <div class="collapse {% if forloop.first %}show{% endif %}" id="workspace-envelope-{{ forloop.counter }}">
+          <div class="tender-tree-items">
+            {% for item in group.items %}
+              <article class="tender-tree-item tender-tree-item-{{ item.badge }}">
+                <div class="tender-tree-item-top">
+                  <span class="tender-tree-number">{{ item.order|default:forloop.counter }}</span>
+                  <div>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                      <strong>{{ item.name }}</strong>
+                      {% if item.mandatory %}<span class="badge text-bg-danger">Mandatory</span>{% endif %}
+                      {% if item.reference %}<span class="badge text-bg-light border">{{ item.reference }}</span>{% endif %}
+                    </div>
+                    {% if item.instruction_lines %}
+                      <ul class="xml-response-list tender-tree-instructions">
+                        {% for line in item.instruction_lines %}
+                          <li>{{ line }}</li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </div>
+                  <span class="badge text-bg-{{ item.badge }}">{{ item.status }}</span>
+                </div>
+                <div class="tender-tree-next-step">
+                  <span>Next step</span>
+                  {{ item.next_step }}
+                  {% if item.matched_document %}
+                    <div class="small mt-1">
+                      Matched: <a href="{{ item.matched_document.get_absolute_url }}">{{ item.matched_document.title|default:item.matched_document.get_document_type_display }}</a>
+                    </div>
+                  {% endif %}
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+  <div class="mt-3 d-flex gap-2 flex-wrap">
+    <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#bidPackCompanyModal">Start Tender Preparation</button>
+    <a class="btn btn-outline-primary" href="{% url 'tenders:download_xml_structure_pdf' object.pk %}?inline=1" target="_blank" rel="noopener">View XML structure PDF</a>
+  </div>
+</div>
+{% endif %}
 
 <div class="modal fade" id="bidPackCompanyModal" tabindex="-1" aria-labelledby="bidPackCompanyModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -31,7 +128,7 @@
       </div>
       <div class="modal-body">
         {% if object.itb_11_items %}
-          <p class="text-muted">TenderAI will create one PDF document for each XML requirement, using this company's details and uploaded certificates where they match.</p>
+          <p class="text-muted">Select the company you want to use for this tender. TenderAI will compare the XML requirements against that company's uploaded profile and generate draft documents for review.</p>
         {% else %}
           <div class="alert alert-warning">No XML structure is saved yet. Fetch or upload the Tender Structure XML first for best results.</div>
         {% endif %}
@@ -45,7 +142,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" type="submit">Create bid documents</button>
+        <button class="btn btn-primary" type="submit">Start preparation</button>
       </div>
     </form>
   </div>

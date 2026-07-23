@@ -98,6 +98,15 @@ class Tender(models.Model):
         return f'{days} day{"s" if days != 1 else ""} left'
 
     @property
+    def lot_count(self):
+        lots = {
+            str(item.get('lot_title') or item.get('lot') or '').strip()
+            for item in self.itb_11_items or []
+            if str(item.get('lot_title') or item.get('lot') or '').strip()
+        }
+        return len(lots)
+
+    @property
     def urgency_class(self):
         days = self.days_until_deadline
         if days is None:

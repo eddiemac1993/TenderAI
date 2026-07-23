@@ -1414,6 +1414,144 @@ h6,
   margin-top: 0.75rem;
 }
 
+.workspace-company-picker {
+  min-width: min(100%, 320px);
+}
+
+.workspace-progress-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workspace-progress-card {
+  background: #f8fbfd;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.workspace-progress-card span,
+.tender-tree-next-step span {
+  color: var(--app-muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.workspace-progress-card strong {
+  color: #101828;
+  display: block;
+  font-size: 1.15rem;
+  line-height: 1.2;
+  margin-top: 0.2rem;
+}
+
+.workspace-progress-card small {
+  color: var(--app-muted);
+}
+
+.tender-tree {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.tender-tree-envelope {
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tender-tree-header {
+  align-items: center;
+  background: #fff;
+  border: 0;
+  color: #101828;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  width: 100%;
+}
+
+.tender-tree-header small {
+  color: var(--app-muted);
+  display: block;
+  font-weight: 600;
+  margin-top: 0.1rem;
+}
+
+.tender-tree-items {
+  background: #f8fbfd;
+  border-top: 1px solid var(--app-line);
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+}
+
+.tender-tree-item {
+  background: #fff;
+  border: 1px solid var(--app-line);
+  border-left: 5px solid #98a2b3;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.tender-tree-item-success {
+  border-left-color: #12b76a;
+}
+
+.tender-tree-item-warning {
+  border-left-color: #f79009;
+}
+
+.tender-tree-item-danger {
+  border-left-color: #f04438;
+}
+
+.tender-tree-item-info {
+  border-left-color: #2e90fa;
+}
+
+.tender-tree-item-top {
+  align-items: flex-start;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: auto 1fr auto;
+}
+
+.tender-tree-number {
+  align-items: center;
+  background: #eef4ff;
+  border-radius: 999px;
+  color: #3538cd;
+  display: inline-flex;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  min-width: 32px;
+  padding: 0 0.45rem;
+}
+
+.tender-tree-instructions {
+  color: #475467;
+  font-size: 0.9rem;
+  margin-top: 0.45rem;
+}
+
+.tender-tree-next-step {
+  background: #fffbeb;
+  border: 1px solid #fedf89;
+  border-radius: 7px;
+  color: #7a2e0e;
+  font-size: 0.9rem;
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.65rem;
+}
+
 .match-card-grid {
   display: grid;
   gap: 0.85rem;
@@ -2682,6 +2820,19 @@ textarea.form-control {
   .metric-grid {
     gap: 0.65rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-progress-grid,
+  .tender-tree-item-top {
+    grid-template-columns: 1fr;
+  }
+
+  .tender-tree-item-top > .badge {
+    justify-self: start;
+  }
+
+  .workspace-company-picker {
+    width: 100%;
   }
 
   .metric-card {

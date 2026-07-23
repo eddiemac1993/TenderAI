@@ -357,6 +357,180 @@ def tender_decisions(tender, matches=None):
     return [tender_decision(match, tender) for match in matches]
 
 
+GENERATABLE_REQUIREMENT_KEYWORDS = [
+    'bid declaration',
+    'bid securing declaration',
+    'bid submission form',
+    'letter of bid',
+    'power of attorney',
+    'letter of authorization',
+    'authorisation',
+    'validity',
+    'delivery period',
+    'payment terms',
+    'programme',
+    'schedule',
+    'technical specification',
+    'technical response',
+    'equipment',
+    'personnel',
+    'experience',
+    'boq',
+    'bill of quantities',
+]
+
+EXTERNAL_ACTION_KEYWORDS = [
+    'line of credit',
+    'bank statement',
+    'site visit',
+    'site visit certificate',
+    'tax clearance',
+    'napsa',
+    'workers compensation',
+    'ncc',
+]
+
+
+def tender_workspace_tree(tender, xml_items, company=None):
+    today = timezone.localdate()
+    company_documents = []
+    if company:
+        company_documents = list(company.documents.all())
+    group_map = {}
+    groups = []
+    total_items = 0
+    completed_items = 0
+    mandatory_total = 0
+    mandatory_completed = 0
+
+    for item in xml_items or []:
+        envelope = item.get('envelope') or 'Bid requirements'
+        if envelope not in group_map:
+            group_map[envelope] = {
+                'name': envelope,
+                'items': [],
+                'total': 0,
+                'completed': 0,
+                'percent': 0,
+            }
+            groups.append(group_map[envelope])
+
+        row = tender_workspace_requirement_row(item, company_documents, today, bool(company))
+        group_map[envelope]['items'].append(row)
+        group_map[envelope]['total'] += 1
+        total_items += 1
+        if row['is_complete']:
+            group_map[envelope]['completed'] += 1
+            completed_items += 1
+        if row['mandatory']:
+            mandatory_total += 1
+            if row['is_complete']:
+                mandatory_completed += 1
+
+    for group in groups:
+        group['percent'] = int((group['completed'] / group['total']) * 100) if group['total'] else 0
+
+    overall_percent = int((completed_items / total_items) * 100) if total_items else 0
+    return {
+        'groups': groups,
+        'total': total_items,
+        'completed': completed_items,
+        'percent': overall_percent,
+        'mandatory_total': mandatory_total,
+        'mandatory_completed': mandatory_completed,
+        'has_company': bool(company),
+        'company': company,
+    }
+
+
+def tender_workspace_requirement_row(item, company_documents, today, has_company):
+    text = ' '.join([
+        str(item.get('requirement') or ''),
+        str(item.get('title') or ''),
+        str(item.get('response') or ''),
+        ' '.join(str(line) for line in item.get('response_items') or []),
+    ])
+    normalized = text.lower()
+    doc_type = document_type_for_requirement_text(normalized)
+    matched_document = None
+    if doc_type:
+        matched_document = best_company_document_for_type(company_documents, doc_type, today)
+
+    if not has_company:
+        status = 'Company not selected'
+        badge = 'secondary'
+        next_step = 'Select a company to check whether this item is available, expired, or missing.'
+        is_complete = False
+    elif matched_document:
+        if matched_document.expiry_date and matched_document.expiry_date < today:
+            status = 'Expired'
+            badge = 'danger'
+            next_step = 'Upload a valid current copy before submission.'
+            is_complete = False
+        else:
+            status = 'Available'
+            badge = 'success'
+            next_step = 'Use this uploaded company document and confirm it matches the tender wording.'
+            is_complete = True
+    elif doc_type:
+        status = 'Document missing'
+        badge = 'warning'
+        next_step = f'Upload {CompanyDocument.DocumentType(doc_type).label} under the selected company.'
+        is_complete = False
+    elif any(keyword in normalized for keyword in EXTERNAL_ACTION_KEYWORDS):
+        status = 'External action required'
+        badge = 'danger'
+        next_step = 'Obtain this evidence from the bank, authority, procuring entity, or site visit officer.'
+        is_complete = False
+    elif any(keyword in normalized for keyword in GENERATABLE_REQUIREMENT_KEYWORDS):
+        status = 'Draft required'
+        badge = 'info'
+        next_step = 'TenderAI can generate a draft, but it must be reviewed, signed, stamped, or completed.'
+        is_complete = False
+    else:
+        status = 'Information required'
+        badge = 'secondary'
+        next_step = 'Review the XML instruction and decide whether to upload evidence or prepare a response.'
+        is_complete = False
+
+    return {
+        'order': item.get('order'),
+        'reference': item.get('reference') or item.get('parent_reference') or '',
+        'name': item.get('requirement') or item.get('title') or 'Bid requirement',
+        'instruction_lines': item.get('response_items') or ([item.get('response')] if item.get('response') else []),
+        'mandatory': bool(item.get('mandatory')),
+        'status': status,
+        'badge': badge,
+        'next_step': next_step,
+        'document_type': doc_type,
+        'matched_document': matched_document,
+        'is_complete': is_complete,
+    }
+
+
+def document_type_for_requirement_text(normalized_text):
+    for keyword, doc_type in KEYWORD_DOC_REQUIREMENTS.items():
+        if keyword in normalized_text:
+            return doc_type
+    for keyword, doc_type in DOC_KEYWORDS.items():
+        if keyword in normalized_text:
+            return doc_type
+    return None
+
+
+def best_company_document_for_type(company_documents, doc_type, today):
+    matching = [document for document in company_documents if document.document_type == doc_type]
+    if doc_type == CompanyDocument.DocumentType.NCC:
+        matching.extend(document for document in company_documents if document.document_type in NCC_ALTERNATE_TYPES)
+    active = [document for document in matching if not document.expiry_date or document.expiry_date >= today]
+    if active:
+        return sorted(active, key=lambda document: document.expiry_date or today, reverse=True)[0]
+    expired = [document for document in matching if document.expiry_date and document.expiry_date < today]
+    if expired:
+        return sorted(expired, key=lambda document: document.expiry_date, reverse=True)[0]
+    return None
+
+
 def ensure_bid_tasks(tender):
     deadline = tender.deadline_date
     for index, (title, description, priority) in enumerate(STANDARD_BID_TASKS, start=1):

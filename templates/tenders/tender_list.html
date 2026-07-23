@@ -58,10 +58,13 @@
           <span class="badge text-bg-{{ tender.urgency_class }}">{{ tender.urgency_label }}</span>
           <span class="badge text-bg-light border">{{ tender.get_status_display }}</span>
           {% if tender.procurement_method %}<span class="badge text-bg-light border">{{ tender.procurement_method }}</span>{% endif %}
+          <span class="badge text-bg-light border">{{ tender.get_source_display }}</span>
+          {% if tender.lot_count %}<span class="badge text-bg-info">{{ tender.lot_count }} lot{{ tender.lot_count|pluralize }}</span>{% endif %}
         </div>
         <h2 class="h5 mb-2"><a href="{{ tender.get_absolute_url }}">{{ tender.title }}</a></h2>
         <div class="tender-meta">
           <span>{{ tender.procuring_entity }}</span>
+          <span>Ref: {{ tender.tender_number|default:tender.zppa_resource_id|default:"-" }}</span>
           <span>Published: {{ tender.published_at|date:"d/m/Y H:i"|default:"-" }}</span>
           <span class="tender-closing-meta">
             Closing: <strong>{{ tender.closing_at|date:"d/m/Y H:i"|default:tender.closing_date|default:"-" }}</strong>
@@ -73,7 +76,11 @@
         {% endif %}
       </div>
       <div class="tender-result-actions">
-        <a class="btn btn-sm btn-primary" href="{{ tender.get_absolute_url }}">View</a>
+        <a class="btn btn-sm btn-primary" href="{{ tender.get_absolute_url }}">View Tender</a>
+        <form method="post" action="{% url 'tenders:save_workspace' tender.pk %}">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-primary" type="submit">Save Tender</button>
+        </form>
         <a class="btn btn-sm btn-outline-success" href="{% url 'tenders:match' tender.pk %}">Match</a>
         {% if tender.imported_reference %}
           <a class="btn btn-sm btn-outline-secondary" href="{{ tender.imported_reference }}" target="_blank" rel="noopener">ZPPA</a>

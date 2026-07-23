@@ -14,6 +14,7 @@ urlpatterns = [
     path('zppa/find-by-url/', views.ZppaUrlImportView.as_view(), name='zppa_find_by_url'),
     path('zppa/scrape-logs/', views.ZppaScrapeLogListView.as_view(), name='zppa_scrape_logs'),
     path('<int:pk>/', views.TenderDetailView.as_view(), name='detail'),
+    path('<int:pk>/save-workspace/', views.save_tender_workspace, name='save_workspace'),
     path('<int:pk>/edit/', views.TenderUpdateView.as_view(), name='update'),
     path('<int:pk>/delete/', views.TenderDeleteView.as_view(), name='delete'),
     path('<int:pk>/requirements/', views.RequirementListView.as_view(), name='tender_requirements'),

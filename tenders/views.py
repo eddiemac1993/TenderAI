@@ -27,7 +27,15 @@ from documents.models import CompanyDocument
 from .forms import BidTaskForm, TenderForm, TenderRequirementForm, ZppaJsonImportForm, ZppaManualImportForm, ZppaUrlImportForm
 from .models import BidTask, Tender, TenderMatch, TenderRequirement, ZppaScrapeLog
 from .pdf_exports import generate_xml_structure_pdf
-from .services import bid_task_progress, calculate_tender_matches, required_document_types, tender_decisions, tender_signals
+from .services import (
+    bid_task_progress,
+    calculate_tender_matches,
+    ensure_bid_tasks,
+    required_document_types,
+    tender_decisions,
+    tender_signals,
+    tender_workspace_tree,
+)
 from .zppa_documents import PublicZppaDocumentFetcher
 from .zppa_scraper import bid_security_amount_from_detail_rows, import_public_zppa_tender_from_url, import_public_zppa_tenders, payment_amount_from_detail_rows
 
@@ -182,11 +190,18 @@ class TenderDetailView(DetailView):
         context['best_decision'] = decisions[0] if decisions else None
         context['top_decisions'] = decisions[:4]
         context['xml_evidence_summary'] = xml_required_document_evidence(self.object)
-        context['expanded_xml_items'] = expanded_tender_xml_items(self.object)
+        expanded_xml_items = expanded_tender_xml_items(self.object)
+        context['expanded_xml_items'] = expanded_xml_items
         if decisions:
             best_company = decisions[0]['match'].company
             context['best_company_document_gaps'] = document_gap_rows_for_company(self.object, best_company)
             context['best_company_for_uploads'] = best_company
+        selected_company = None
+        selected_company_id = self.request.GET.get('company')
+        if selected_company_id:
+            selected_company = filter_queryset_for_user(Company.objects.all(), self.request.user).filter(pk=selected_company_id).first()
+        context['workspace_selected_company'] = selected_company
+        context['workspace_tree'] = tender_workspace_tree(self.object, expanded_xml_items, selected_company)
         context['required_document_labels'] = [
             CompanyDocument.DocumentType(doc_type).label for doc_type in required_document_types(self.object)
         ]
@@ -194,6 +209,17 @@ class TenderDetailView(DetailView):
         context['bid_task_progress'] = bid_task_progress(self.object)
         context['bid_company_options'] = filter_queryset_for_user(Company.objects.order_by('name'), self.request.user)
         return context
+
+
+@require_POST
+def save_tender_workspace(request, pk):
+    tender = get_object_or_404(Tender, pk=pk)
+    ensure_bid_tasks(tender)
+    if tender.status == Tender.Status.NEW:
+        tender.status = Tender.Status.REVIEWING
+        tender.save(update_fields=['status', 'updated_at'])
+    messages.success(request, 'Tender saved to Draft Tenders. Open it when you are ready to select a company and prepare documents.')
+    return redirect(tender)
 
 
 class TenderFileUploadView(DetailView):
